@@ -1,0 +1,32 @@
+/* custom-ui.css */
+html,
+body {
+    margin: 0;
+    height: 100%;
+}
+
+#header {
+    height: 100px;
+}
+
+.title {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+#scroll-view {
+    bottom: 0;
+    /* leave room for 100px header */
+    height: calc(100% - 100px);
+    width: 100%;
+    overflow: auto;
+}
+
+#viewer {
+    margin: auto;
+}
+
+.pageContainer {
+    border: 1px solid black;
+    position: relative;
+}

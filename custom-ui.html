@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="css/custom-ui.css">
+</head>
+
+<body>
+    <div id="header">
+        <div class="title">This is a custom viewer</div>
+        <button id="zoom-out-button">Zoom out</button>
+        <button id="zoom-in-button">Zoom in</button>
+        <button id="create-rectangle">Rectangle</button>
+        <button id="select">Select</button>
+        Latest annotation change: <span id="annotation-change"></span>
+    </div>
+    <div id="scroll-view">
+        <div id="viewer"></div>
+    </div>
+    <script src="lib/core/external/jquery-3.2.1.min.js"></script>
+    <script src="lib/core/external/html2canvas.min.js"></script>
+    <script src="lib/core/CoreControls.js"></script>
+    <!-- <script src="lib/core/pdf/PDFNet.js"></script> -->
+    <script src="scripts/custom-ui.js"></script>
+</body>
+
+</html>

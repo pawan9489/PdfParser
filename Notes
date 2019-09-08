@@ -1,0 +1,3 @@
+var doc = readerControl.docViewer.getDocument();
+var pdfCoords = doc.getPDFCoordinates(pageIndex, x, y);
+var viewerCoords = doc.getViewerCoordinates(pageIndex, pdfCoords.x, pdfCoords.y);
