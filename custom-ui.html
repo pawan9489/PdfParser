@@ -7,21 +7,27 @@
 
 <body>
     <div id="header">
-        <div class="title">This is a custom viewer</div>
-        <button id="zoom-out-button">Zoom out</button>
-        <button id="zoom-in-button">Zoom in</button>
-        <button id="create-rectangle">Rectangle</button>
+        <div class="title">PDF Text Extraction</div>
+        <button id="zoom-out-button">-</button>
+        <button id="zoom-in-button">+</button>
+        <button id="create-rectangle">Box</button>
         <button id="select">Select</button>
         Latest annotation change: <span id="annotation-change"></span>
     </div>
-    <div id="scroll-view">
-        <div id="viewer"></div>
+    <div id="selections_plus_view">
+        <div id="selections">
+
+        </div>
+        <div id="scroll-view">
+            <div id="viewer"></div>
+        </div>
     </div>
     <script src="lib/core/external/jquery-3.2.1.min.js"></script>
     <script src="lib/core/external/html2canvas.min.js"></script>
     <script src="lib/core/CoreControls.js"></script>
     <!-- <script src="lib/core/pdf/PDFNet.js"></script> -->
-    <script src="scripts/custom-ui.js"></script>
+    <!-- <script src="scripts/custom-ui.js"></script> -->
+    <script src="bundle.js"></script>
 </body>
 
 </html>
