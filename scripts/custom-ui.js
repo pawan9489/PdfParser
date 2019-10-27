@@ -110,8 +110,6 @@ const filterRange = (textMap, boxCoordinates) => {
     // Slice doesn't include last index
     const topLine = textMap[topLineIndex];
     const bottomLine = textMap[baseLineIndex];
-    console.log(inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex, 
-    inBetween(bottomLine.y2, [bottomLine.y1, y1]) ? baseLineIndex : baseLineIndex + 1);
     return textMap.slice(
         inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex, 
         inBetween(bottomLine.y2, [bottomLine.y1, y1]) ? baseLineIndex : baseLineIndex + 1);
@@ -202,11 +200,10 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
     // Output = ["line1", "line2"];
 };
 
-const extractTextFromPage = (doc, pageNumber, action) => {
+const extractTextFromPage = (doc, pageIndex, action) => {
     // Accepts 0 based page index
-    doc.loadPageText(pageNumber, text => {
+    doc.loadPageText(pageIndex, text => {
         const data = [];
-        let pageIndex = 0;
         const getTextPositionCallback = quads => {
             // 'quads' will contain an array for each character between the start and end indexes
             const first = quads[0];
@@ -277,24 +274,27 @@ const setupEventHandlers = docViewer => {
             // console.log('this is a change that added annotations', event);
             const doc = docViewer.getDocument();
             annotations.forEach(annotation => {
-                const bottomLeft = doc.getPDFCoordinates(0, annotation.getLeft(), annotation.getBottom());
+                const pageIndex = annotation.getPageNumber();
+                const pageCount = doc.getPageCount();
+                const bottomLeft = doc.getPDFCoordinates(pageIndex, annotation.getLeft(), annotation.getBottom());
                 const [x1, y1] = [bottomLeft.x, bottomLeft.y];
-                // console.log('Annotation x1, y1:', x1, y1);
-                const topRight = doc.getPDFCoordinates(0, annotation.getRight(), annotation.getTop());
+                const topRight = doc.getPDFCoordinates(pageIndex, annotation.getRight(), annotation.getTop());
                 const [x2, y2] = [topRight.x, topRight.y];
-                // console.log('Annotation x2, y2:', x2, y2);
-                extractTextFromPage(doc, 0, textMap => {
-                    console.log(textMap);
-                    console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
-                    console.log(extractTextFromBox(textMap, {x1, y1, x2, y2}));
-                });
+                const d = [];
+                for (let i = 0; i < pageCount; i++) {
+                    extractTextFromPage(doc, i, textMap => {
+                        // console.log(textMap);
+                        // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
+                        d.push(extractTextFromBox(textMap, {x1, y1, x2, y2}));
+                    });                    
+                }
+                console.log(d);
             });
         } else if (action === 'modify') {
             console.log('this change modified annotations', event);
         } else if (action === 'delete') {
             console.log('there were annotations deleted', event);
         }
-        // console.log(annotations);
     });
 };
 
@@ -322,7 +322,7 @@ CoreControls.getDefaultPdfBackendType().then(backendType => {
     docViewer.on('documentLoaded', () => {
         // enable default tool for text and annotation selection
         docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
-        const doc = docViewer.getDocument();
+        // const doc = docViewer.getDocument();
         // extractTextFromPage(doc, 0);
     });
 });
