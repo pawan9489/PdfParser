@@ -17139,7 +17139,7 @@ const zipTextWithCoordinates = textArray => {
     return result;
     // Output = [
     //     {
-    //          x1, x2, y1, y2, text, len
+    //          x1, x2, y1, y2, text
     //     }
     // ]
 };
@@ -17152,7 +17152,9 @@ const groupTextsViaYaxis = texts => {
     // ]
     return _.chain(texts)
             .groupBy("y1")
-            .map((v, k) => ({y1: k, y2: v.y2, texts: v}))
+            .map((v, k) => ({y1: Number(k), y2: Number(v[0].y2), texts: v}))
+            .sortBy(e => e.y1)
+            .reverse()
             .value();
     // Output = [
     //     {
@@ -17179,8 +17181,13 @@ const searchClosestIndex = (sortedArray, extracter, x) => {
             closestIndex = i;
         }
     });
-    console.log(sortedArray, closestIndex);
     return closestIndex;
+};
+
+const inBetween = (a, pair) => {
+    const [x, y] = pair;
+    const [min, max] = [Math.min(x, y), Math.max(x, y)];
+    return a >= min && a <= max;
 };
 
 const filterRange = (textMap, boxCoordinates) => {
@@ -17201,9 +17208,30 @@ const filterRange = (textMap, boxCoordinates) => {
     // _.indexOf(xs, x, true); -- Binary Search
     // _.indexOf(xs, x); -- Normal Search
     const {x1, y1, x2, y2} = boxCoordinates;
-    const baseLineIndex = searchClosestIndex(textMap, e => e.y1, y1);
-    const topLineIndex = searchClosestIndex(textMap, e => e.y1, y2);
-    return textMap.slice(topLineIndex - 1, baseLineIndex + 1); // Slice doesn't include last index
+    // Page = List hanging down
+    // Page Top => List Left
+    // Page Bottom => List Right
+    const topLineIndex = searchClosestIndex(textMap, e => e.y2, y2); // Exclude Top Most
+    // Possibilities for TopLineIndex
+    // y2.UnWanted.y1 - Box.y2     - y2.Wanted.y1 -- Closer to unwanted line
+    // y2.UnWanted.y1 -     Box.y2 - y2.Wanted.y1 -- Closer to wanted line
+    // -- closest.y1 inBetween (closest.y2, Box.y2) 
+    // ? Don't Pick TopLineIndex : Pick TopLineIndex
+    const baseLineIndex = searchClosestIndex(textMap, e => e.y1, y1); // Include Bottom Most
+    // Possibilities for BaseLineIndex
+    // y2.Wanted.y1 - Box.y1     - y2.UnWanted.y1 -- Closer to wanted line
+    // y2.Wanted.y1 -     Box.y1 - y2.UnWanted.y1 -- Closer to unwanted line
+    // -- closest.y2 inBetween (Box.y1, closest.y1) 
+    // ? Don't Pick BaseLineIndex : Pick BaseLineIndex
+
+    // Slice doesn't include last index
+    const topLine = textMap[topLineIndex];
+    const bottomLine = textMap[baseLineIndex];
+    console.log(inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex, 
+    inBetween(bottomLine.y2, [bottomLine.y1, y1]) ? baseLineIndex : baseLineIndex + 1);
+    return textMap.slice(
+        inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex, 
+        inBetween(bottomLine.y2, [bottomLine.y1, y1]) ? baseLineIndex : baseLineIndex + 1);
     // Output = [
     //     {
     //         y1, // Filtered as  
@@ -17215,6 +17243,46 @@ const filterRange = (textMap, boxCoordinates) => {
     //         ]
     //     }
     // ]
+};
+
+const isLeftLeaning = (left, between, right) => {
+    // 20 40 80 - Yes, 40 is left leaning
+    // 20 60 80 - No, 60 is right leaning
+    return (right - between) >= (between - left);
+};
+
+const isRightLeaning = (left, between, right) => {
+    return !isLeftLeaning(left, between, right);
+};
+
+const decideToTakeWord = (wordLeft, wordRight, boxLeft, boxRight) => {
+    // Possibilites of Word Overlapping with Box
+    /*  1. Word Fully Inside of Box - Take the word
+            X1 - W1 - W2 - X2
+        2. Left Overlap - Take the word if more that 50% overlap
+            W1 - X1 - W2 - X2
+        3. Right Overlap - Take the word if more that 50% overlap
+            X1 - W1 - X2 - W2
+        4. Left Outside - Don't take the word
+            W1 - W2 - X1 - X2
+        5. Right Outside - Don't take the word
+            X1 - X2 - W1 - W2
+        6. Box Fully Inside of Word - Take the word if Box Width is more than Half of Word Width 
+            W1 - X1 - X2 - W2
+    */
+    if (boxLeft <= wordLeft && wordRight <= boxRight) {
+        return true;
+    } else if (wordLeft <= boxLeft && wordRight <= boxRight) {
+        return isLeftLeaning(wordLeft, boxLeft, wordRight);
+    } else if (boxLeft <= wordLeft && boxRight <= wordRight) {
+        return isRightLeaning(wordLeft, boxRight, wordRight);
+    } else if (wordRight <= boxLeft || boxRight <= wordLeft) {
+        return false;
+    } else { // Box Fully Inside of Word
+        const wordWidth = wordRight - wordLeft;
+        const boxWidth = boxRight - boxLeft;
+        return boxWidth * 2 >= wordWidth;
+    }
 };
 
 const extractTextFromBox = (textMap, boxCoordinates) => {
@@ -17239,11 +17307,13 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
         let temp = "";
         line.texts.forEach(word => {
             const {text, x1, x2, y1, y2} = word;
-            if (Number(x1) >= bx1 && Number(x2) <= bx2) {
+            if (decideToTakeWord(Number(x1), Number(x2), bx1, bx2)) {
                 temp += text;
             }
         });
-        result.push(temp);
+        if (temp !== "") {
+            result.push(temp);
+        }
     });
     return result;
     // Output = ["line1", "line2"];
