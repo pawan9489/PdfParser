@@ -17362,7 +17362,34 @@ const extractTextFromPage = (doc, pageIndex, action) => {
         const textMap = groupTextsViaYaxis(textZipped);
         action(textMap);
     });
-}; 
+};
+
+let globalDocViewer = '';
+
+const renderPDF = (backendType, fileName) => {
+    const licenseKey = '';
+    const workerTransportPromise = CoreControls.initPDFWorkerTransports(backendType, {}, licenseKey);
+    const docViewer = globalDocViewer === '' ? new CoreControls.DocumentViewer() : globalDocViewer;
+    globalDocViewer = docViewer;
+    const partRetriever = new CoreControls.PartRetrievers.ExternalPdfPartRetriever(fileName);
+    docViewer.setScrollViewElement(document.getElementById('scroll-view'));
+    docViewer.setViewerElement(document.getElementById('viewer'));
+    docViewer.loadAsync(partRetriever, {
+        type: 'pdf',
+        backendType: backendType,
+        workerTransportPromise: workerTransportPromise
+    });
+    docViewer.setOptions({
+        enableAnnotations: true
+    });
+    setupEventHandlers(docViewer);
+    docViewer.on('documentLoaded', () => {
+        // enable default tool for text and annotation selection
+        docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
+        // const doc = docViewer.getDocument();
+        // extractTextFromPage(doc, 0);
+    });
+};
 
 // setup event handlers for the header
 const setupEventHandlers = docViewer => {
@@ -17382,16 +17409,26 @@ const setupEventHandlers = docViewer => {
         docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
     });
 
-    const annotationChangeContainer = document.getElementById('annotation-change');
+    document.getElementById('upload').addEventListener('change', event => {
+        const file = event.target.files[0];
+        console.log(file);
+        if (file) {
+            CoreControls.getDefaultPdfBackendType().then(backendType => {
+                renderPDF(backendType, file);
+            });
+        }
+    });
+
+    // const annotationChangeContainer = document.getElementById('annotation-change');
 
     const annotManager = docViewer.getAnnotationManager();
     annotManager.on('annotationChanged', (e, annotations, action) => {
-        annotationChangeContainer.textContent = action + ' ' + annotations.length;
+        // annotationChangeContainer.textContent = action + ' ' + annotations.length;
         if (action === 'add') {
             // console.log('this is a change that added annotations', event);
             const doc = docViewer.getDocument();
             annotations.forEach(annotation => {
-                const pageIndex = annotation.getPageNumber();
+                const pageIndex = annotation.getPageNumber() - 1;
                 const pageCount = doc.getPageCount();
                 const bottomLeft = doc.getPDFCoordinates(pageIndex, annotation.getLeft(), annotation.getBottom());
                 const [x1, y1] = [bottomLeft.x, bottomLeft.y];
@@ -17415,32 +17452,9 @@ const setupEventHandlers = docViewer => {
     });
 };
 
+// Main - First Run
 CoreControls.getDefaultPdfBackendType().then(backendType => {
-    const licenseKey = 'Insert commercial license key here after purchase';
-    const workerTransportPromise = CoreControls.initPDFWorkerTransports(backendType, {}, licenseKey);
-
-    const docViewer = new CoreControls.DocumentViewer();
-    const partRetriever = new CoreControls.PartRetrievers.ExternalPdfPartRetriever('../pdfs/Payslips_July_19.pdf');
-
-    docViewer.setScrollViewElement(document.getElementById('scroll-view'));
-    docViewer.setViewerElement(document.getElementById('viewer'));
-    docViewer.loadAsync(partRetriever, {
-        type: 'pdf',
-        backendType: backendType,
-        workerTransportPromise: workerTransportPromise
-    });
-
-    docViewer.setOptions({
-        enableAnnotations: true
-    });
-
-    setupEventHandlers(docViewer);
-
-    docViewer.on('documentLoaded', () => {
-        // enable default tool for text and annotation selection
-        docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
-        // const doc = docViewer.getDocument();
-        // extractTextFromPage(doc, 0);
-    });
+    // console.log(backendType); // ems
+    renderPDF(backendType, '../pdfs/Payslips_July_19.pdf');
 });
 },{"lodash":1}]},{},[2]);

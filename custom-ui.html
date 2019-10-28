@@ -6,20 +6,36 @@
 </head>
 
 <body>
+    <div class="title">PDF Text Extraction</div>
     <div id="header">
-        <div class="title">PDF Text Extraction</div>
-        <button id="zoom-out-button">-</button>
-        <button id="zoom-in-button">+</button>
-        <button id="create-rectangle">Box</button>
-        <button id="select">Select</button>
-        Latest annotation change: <span id="annotation-change"></span>
+        <div class="toolSection pdfSection">
+            <button id="zoom-out-button">-</button>
+            <button id="zoom-in-button">+</button>
+            <button id="create-rectangle">Box</button>
+            <button id="select">Select</button>
+        </div>
+        <div class="toolSection metadataSection">
+            <button id="keyWords">Key Words</button>
+            <button id="types">Types</button>
+            <button id="structures">Structures</button>
+        </div>
+        <div class="toolSection uploadSection">
+            <input id="upload" type="file" value=""accept=".pdf">
+            <!-- accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.md,.dwg,.dxf,.dgn,.rtf,.odt,.ods,.odp,.bmp,.wmf,.emf,.gif,.jpc,.tif,.html,.txt" -->
+        </div>
+        <!-- Latest annotation change: <span id="annotation-change"></span> -->
     </div>
     <div id="selections_plus_view">
         <div id="selections">
-
+            <div class="pdfTemplate">PDF Existing Templates</div>
         </div>
         <div id="scroll-view">
             <div id="viewer"></div>
+        </div>
+        <div id="rough_and_run">
+            <div class="roughSection">Rough</div>
+            <div class="excelTemplate">Excel Existing Templates</div>
+            <div class="run">Run</div>
         </div>
     </div>
     <script src="lib/core/external/jquery-3.2.1.min.js"></script>
