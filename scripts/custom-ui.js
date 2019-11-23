@@ -14,10 +14,21 @@ const zipTextWithCoordinates = textArray => {
     //    {x1, y2, x2, y2}, ......
     // ]
     const result = [];
-    for(let i = 0; i < textArray.length; i+=2) {
+    for (let i = 0; i < textArray.length; i += 2) {
         const [text, len] = textArray[i]; // ["text", text_length]
-        const {x1, y1, x2, y2} = textArray[i + 1];
-        result.push({x1, y1, x2, y2, text});        
+        const {
+            x1,
+            y1,
+            x2,
+            y2
+        } = textArray[i + 1];
+        result.push({
+            x1,
+            y1,
+            x2,
+            y2,
+            text
+        });
     }
     return result;
     // Output = [
@@ -34,11 +45,15 @@ const groupTextsViaYaxis = texts => {
     //     }
     // ]
     return _.chain(texts)
-            .groupBy("y1")
-            .map((v, k) => ({y1: Number(k), y2: Number(v[0].y2), texts: v}))
-            .sortBy(e => e.y1)
-            .reverse()
-            .value();
+        .groupBy("y1")
+        .map((v, k) => ({
+            y1: Number(k),
+            y2: Number(v[0].y2),
+            texts: v
+        }))
+        .sortBy(e => e.y1)
+        .reverse()
+        .value();
     // Output = [
     //     {
     //         y1, 
@@ -90,7 +105,12 @@ const filterRange = (textMap, boxCoordinates) => {
     // ]
     // _.indexOf(xs, x, true); -- Binary Search
     // _.indexOf(xs, x); -- Normal Search
-    const {x1, y1, x2, y2} = boxCoordinates;
+    const {
+        x1,
+        y1,
+        x2,
+        y2
+    } = boxCoordinates;
     // Page = List hanging down
     // Page Top => List Left
     // Page Bottom => List Right
@@ -111,7 +131,7 @@ const filterRange = (textMap, boxCoordinates) => {
     const topLine = textMap[topLineIndex];
     const bottomLine = textMap[baseLineIndex];
     return textMap.slice(
-        inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex, 
+        inBetween(topLine.y1, [topLine.y2, y2]) ? topLineIndex + 1 : topLineIndex,
         inBetween(bottomLine.y2, [bottomLine.y1, y1]) ? baseLineIndex : baseLineIndex + 1);
     // Output = [
     //     {
@@ -181,13 +201,24 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
     //         ]
     //     }
     // ]
-    const {x1: bx1, y1: by1, x2: bx2, y2: by2} = boxCoordinates;
+    const {
+        x1: bx1,
+        y1: by1,
+        x2: bx2,
+        y2: by2
+    } = boxCoordinates;
     const filterd = filterRange(textMap, boxCoordinates);
     const result = [];
     filterd.forEach(line => {
         let temp = "";
         line.texts.forEach(word => {
-            const {text, x1, x2, y1, y2} = word;
+            const {
+                text,
+                x1,
+                x2,
+                y1,
+                y2
+            } = word;
             if (decideToTakeWord(Number(x1), Number(x2), bx1, bx2)) {
                 temp += text;
             }
@@ -238,9 +269,9 @@ const extractTextFromPage = (doc, pageIndex, action) => {
                 }
             }, []);
         refinedData.forEach(x => {
-                data.push(x);
-                doc.getTextPosition(pageIndex, x[1] - x[0].length, x[1], getTextPositionCallback);
-            });
+            data.push(x);
+            doc.getTextPosition(pageIndex, x[1] - x[0].length, x[1], getTextPositionCallback);
+        });
         const textZipped = zipTextWithCoordinates(data);
         const textMap = groupTextsViaYaxis(textZipped);
         action(textMap);
@@ -292,14 +323,91 @@ const setupEventHandlers = docViewer => {
         docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
     });
 
-    document.getElementById('upload').addEventListener('change', event => {
-        const file = event.target.files[0];
+    // document.getElementById('upload').addEventListener('change', event => {
+    //     const file = event.target.files[0];
+    //     console.log(file);
+    //     if (file) {
+    //         CoreControls.getDefaultPdfBackendType().then(backendType => {
+    //             renderPDF(backendType, file);
+    //         });
+    //     }
+    // });
+
+    document.getElementById('upload').addEventListener('change', function () {
+        const file = this.files[0];
         console.log(file);
         if (file) {
             CoreControls.getDefaultPdfBackendType().then(backendType => {
-                renderPDF(backendType, file);
+                renderPDF(backendType, `../${file.name}`);
             });
         }
+    });
+
+    document.getElementById('keyWords').addEventListener('click', () => {
+        const modal = document.getElementById("keyWordsModal");
+        modal.style.display = "block";
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+    });
+
+    document.getElementById('types').addEventListener('click', () => {
+        const modal = document.getElementById("typesModal");
+        modal.style.display = "block";
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+    });
+
+    document.getElementById('structures').addEventListener('click', () => {
+        const modal = document.getElementById("structuresModal");
+        modal.style.display = "block";
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+    });
+
+    // Insert new chip
+    $("#keyWords-chip-input").keyup(function (event) {
+        const data = this.value;
+        if (event.keyCode === 13) {
+            //alert(data);
+            $('<div class="chip"> ' + data + ' <span class="closebtn" >&times;</span></div>').insertBefore(this);
+            $(this).val(null);
+        }
+    });
+
+    $("#types-chip-input").keyup(function (event) {
+        const data = this.value;
+        if (event.keyCode === 13) {
+            //alert(data);
+            $('<div class="chip"> ' + data + ' <span class="closebtn" >&times;</span></div>').insertBefore(this);
+            $(this).val(null);
+        }
+    });
+
+    $("#structures-chip-input").keyup(function (event) {
+        const data = this.value;
+        if (event.keyCode === 13) {
+            //alert(data);
+            $('<div class="chip"> ' + data + ' <span class="closebtn" >&times;</span></div>').insertBefore(this);
+            $(this).val(null);
+        }
+    });
+
+    // Remove chip
+    $(document).on('click', '.closebtn', function () {
+        //alert('test');
+        $(this).parent().remove();
     });
 
     // const annotationChangeContainer = document.getElementById('annotation-change');
@@ -322,8 +430,13 @@ const setupEventHandlers = docViewer => {
                     extractTextFromPage(doc, i, textMap => {
                         // console.log(textMap);
                         // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
-                        d.push(extractTextFromBox(textMap, {x1, y1, x2, y2}));
-                    });                    
+                        d.push(extractTextFromBox(textMap, {
+                            x1,
+                            y1,
+                            x2,
+                            y2
+                        }));
+                    });
                 }
                 console.log(d);
             });
@@ -338,5 +451,7 @@ const setupEventHandlers = docViewer => {
 // Main - First Run
 CoreControls.getDefaultPdfBackendType().then(backendType => {
     // console.log(backendType); // ems
+    // const docViewer = globalDocViewer === '' ? new CoreControls.DocumentViewer() : globalDocViewer;
+    // setupEventHandlers(docViewer);
     renderPDF(backendType, '../pdfs/Payslips_July_19.pdf');
 });

@@ -16,11 +16,82 @@
         </div>
         <div class="toolSection metadataSection">
             <button id="keyWords">Key Words</button>
+            <div id="keyWordsModal" class="modal">
+                <div class="modal-content">
+                    <!-- <span class="close">&times;</span> -->
+                    <p>Key words to Capture</p>
+                    <div class="chips chips-initial input-field">
+                        <div class="chip">NI Number
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Full Name
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Earnings
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Deductions
+                            <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Salary
+                            <span class="closebtn" >&times;</span> 
+                        </div>
+                        <input type="text" class="chip-input" id="keyWords-chip-input"> 
+                     </div>
+                </div>
+            </div>
+
             <button id="types">Types</button>
+            <div id="typesModal" class="modal">
+                <div class="modal-content">
+                    <!-- <span class="close">&times;</span> -->
+                    <p>Types of data</p>
+                    <div class="chips chips-initial input-field">
+                        <div class="chip">String
+                            <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Number
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">String - Number.2 - Number.4
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Number.2
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">Number.3
+                            <span class="closebtn" >&times;</span> 
+                         </div>
+                         <div class="chip">Number.4
+                            <span class="closebtn" >&times;</span> 
+                         </div>
+                        <input type="text" class="chip-input" id="types-chip-input"> 
+                     </div>
+                </div>
+            </div>
+
             <button id="structures">Structures</button>
+            <div id="structuresModal" class="modal">
+                <div class="modal-content">
+                    <!-- <span class="close">&times;</span> -->
+                    <p>Structures Modal</p>
+                    <div class="chips chips-initial input-field">
+                        <div class="chip">SingleLine
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">MultiLine
+                           <span class="closebtn" >&times;</span> 
+                        </div>
+                        <div class="chip">structures 3
+                           <span class="closebtn" >&times;</span> 
+                        </div>                            
+                        <input type="text" class="chip-input" id="structures-chip-input"> 
+                     </div>
+                </div>
+            </div>
         </div>
         <div class="toolSection uploadSection">
-            <input id="upload" type="file" value=""accept=".pdf">
+            <input id="upload" type="file" value="" accept=".pdf">
             <!-- accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.md,.dwg,.dxf,.dgn,.rtf,.odt,.ods,.odp,.bmp,.wmf,.emf,.gif,.jpc,.tif,.html,.txt" -->
         </div>
         <!-- Latest annotation change: <span id="annotation-change"></span> -->
