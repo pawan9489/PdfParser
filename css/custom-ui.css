@@ -38,13 +38,36 @@ body {
     height: 100%;
     width: 20%;
     border: 1px solid black;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#existing_templates {
+    height: 30%;
 }
 
 #rough_and_run {
     height: 100%;
     width: 20%;
     border: 1px solid black;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
+
+#excel_tempalte {
+    height: 50%;
+}
+
+#existing_excel_templates {
+    height: 40%;
+}
+
+#run {
+    height: 10%;
+}
+
 
 #scroll-view {
     bottom: 0;

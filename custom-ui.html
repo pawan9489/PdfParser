@@ -47,6 +47,9 @@
                     <!-- <span class="close">&times;</span> -->
                     <p>Types of data</p>
                     <div class="chips chips-initial input-field">
+                        <div class="chip"> ^\s*[a-zA-Z]{2}(?:\s*\d\s*){6}[a-zA-Z]?\s*$
+                            <span class="closebtn" >&times;</span>
+                        </div>
                         <div class="chip">String
                             <span class="closebtn" >&times;</span> 
                         </div>
@@ -98,20 +101,23 @@
     </div>
     <div id="selections_plus_view">
         <div id="selections">
-            <div class="pdfTemplate">PDF Existing Templates</div>
+            <div id="current_template"> Current Editing Template </div>
+            <div id="existing_templates" class="pdfTemplate"> Existing PDF Templates</div>
         </div>
         <div id="scroll-view">
             <div id="viewer"></div>
         </div>
         <div id="rough_and_run">
-            <div class="roughSection">Rough</div>
-            <div class="excelTemplate">Excel Existing Templates</div>
-            <div class="run">Run</div>
+            <div id="excel_tempalte"> Create Excel Template </div>
+            <div id="existing_excel_templates"> Existing Excel Templates</div>
+            <div id="run">Run</div>
         </div>
     </div>
     <script src="lib/core/external/jquery-3.2.1.min.js"></script>
     <script src="lib/core/external/html2canvas.min.js"></script>
     <script src="lib/core/CoreControls.js"></script>
+    <script src="scripts/alasql-min.js"></script>
+    <script src="scripts/xlsx.js"></script>
     <!-- <script src="lib/core/pdf/PDFNet.js"></script> -->
     <!-- <script src="scripts/custom-ui.js"></script> -->
     <script src="bundle.js"></script>

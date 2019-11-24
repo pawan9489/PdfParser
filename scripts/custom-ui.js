@@ -1,6 +1,13 @@
 // custom-ui.js
 CoreControls.setWorkerPath('lib/core');
 const _ = require('lodash');
+const uniqueFilename = require('unique-filename');
+let globalDocViewer = '';
+let current_editing_template = [];
+let existing_pdf_templates = [];
+let excel_template = [];
+let existing_excel_templates = [];
+let cached_pages = {};
 
 // PDF - Axis
 // X = Left to Right
@@ -231,54 +238,60 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
     // Output = ["line1", "line2"];
 };
 
-const extractTextFromPage = (doc, pageIndex, action) => {
+const extractTextFromPage = (doc, pageIndex) => {
     // Accepts 0 based page index
-    doc.loadPageText(pageIndex, text => {
-        const data = [];
-        const getTextPositionCallback = quads => {
-            // 'quads' will contain an array for each character between the start and end indexes
-            const first = quads[0];
-            const last = quads[quads.length - 1];
-            const normalCorordinates = {
-                'x1': first.x1,
-                'x2': last.x2,
-                'y1': first.y4,
-                'y2': first.y1,
+    return new Promise((resolve, reject) => {
+        doc.loadPageText(pageIndex, text => {
+            const data = [];
+            const getTextPositionCallback = quads => {
+                // 'quads' will contain an array for each character between the start and end indexes
+                const first = quads[0];
+                const last = quads[quads.length - 1];
+                const normalCorordinates = {
+                    'x1': first.x1,
+                    'x2': last.x2,
+                    'y1': first.y4,
+                    'y2': first.y1,
+                };
+                const x1y1 = doc.getPDFCoordinates(pageIndex, normalCorordinates.x1, normalCorordinates.y1);
+                const x2y2 = doc.getPDFCoordinates(pageIndex, normalCorordinates.x2, normalCorordinates.y2);
+                const pdfCoordinates = {
+                    'x1': x1y1.x,
+                    'y1': x1y1.y,
+                    'x2': x2y2.x,
+                    'y2': x2y2.y,
+                };
+                data.push(pdfCoordinates);
             };
-            const x1y1 = doc.getPDFCoordinates(pageIndex, normalCorordinates.x1, normalCorordinates.y1);
-            const x2y2 = doc.getPDFCoordinates(pageIndex, normalCorordinates.x2, normalCorordinates.y2);
-            const pdfCoordinates = {
-                'x1': x1y1.x,
-                'y1': x1y1.y,
-                'x2': x2y2.x,
-                'y2': x2y2.y,
-            };
-            data.push(pdfCoordinates);
-        };
-        const refinedData = text // "FirstName LastName↵ReferenceNumber↵"
-            .split('\n') // ["FirstName LastName", "ReferenceNumber", ""]
-            .map(s => [s, s.length]) // [["FirstName LastName", 18], ["ReferenceNumber", 15], ["", 0]]
-            .reduce((acc, x) => { // [["FirstName LastName", 18], ["ReferenceNumber", 34]]
-                if (x[1] === 0) {
-                    return acc;
-                } else if (acc.length === 0) {
-                    return [x];
-                } else {
-                    acc.push([x[0], acc[acc.length - 1][1] + x[1] + 1]);
-                    return acc;
-                }
-            }, []);
-        refinedData.forEach(x => {
-            data.push(x);
-            doc.getTextPosition(pageIndex, x[1] - x[0].length, x[1], getTextPositionCallback);
+            const refinedData = text // "FirstName LastName↵ReferenceNumber↵"
+                .split('\n') // ["FirstName LastName", "ReferenceNumber", ""]
+                .map(s => [s, s.length]) // [["FirstName LastName", 18], ["ReferenceNumber", 15], ["", 0]]
+                .reduce((acc, x) => { // [["FirstName LastName", 18], ["ReferenceNumber", 34]]
+                    if (x[1] === 0) {
+                        return acc;
+                    } else if (acc.length === 0) {
+                        return [x];
+                    } else {
+                        acc.push([x[0], acc[acc.length - 1][1] + x[1] + 1]);
+                        return acc;
+                    }
+                }, []);
+            refinedData.forEach(x => {
+                data.push(x);
+                doc.getTextPosition(pageIndex, x[1] - x[0].length, x[1], getTextPositionCallback);
+            });
+            const textZipped = zipTextWithCoordinates(data);
+            if (textZipped === undefined || textZipped === null) {
+                reject(`Zipping of text co-ordinates failed.`);
+            }
+            const textMap = groupTextsViaYaxis(textZipped);
+            if (textMap === undefined || textMap === null) {
+                reject(`TextMap Construction failed.`);
+            }
+            resolve(textMap);
         });
-        const textZipped = zipTextWithCoordinates(data);
-        const textMap = groupTextsViaYaxis(textZipped);
-        action(textMap);
     });
 };
-
-let globalDocViewer = '';
 
 const renderPDF = (backendType, fileName) => {
     const licenseKey = '';
@@ -303,6 +316,23 @@ const renderPDF = (backendType, fileName) => {
         // const doc = docViewer.getDocument();
         // extractTextFromPage(doc, 0);
     });
+};
+
+const randomFileName = initial => uniqueFilename('', uniqueFilename('', uniqueFilename('', initial)));
+
+const generateExcel = (sheetsData, options) => {
+    // sheetsData = [sheet1Data, sheet2Data, sheet3Data]
+    // sheet1Data = // [KeyValuePairs(Rows)]
+    // [
+    //      {Col1: v11, Col2: v12} // Row
+    //      {Col1: v21, Col2: v22} // Row
+    // ]
+    // options = [
+    //      {sheetid: "<SheetName>", header: true} // Sheet 1 Info
+    //      {sheetid: "<SheetName>", header: true} // Sheet 2 Info
+    // ]
+    const fileName = randomFileName('excel');
+    alasql(`SELECT * INTO XLSX('${fileName}', ?) FROM ?`, [options, sheetsData]);
 };
 
 // setup event handlers for the header
@@ -426,8 +456,9 @@ const setupEventHandlers = docViewer => {
                 const topRight = doc.getPDFCoordinates(pageIndex, annotation.getRight(), annotation.getTop());
                 const [x2, y2] = [topRight.x, topRight.y];
                 const d = [];
+                const promises = [];
                 for (let i = 0; i < pageCount; i++) {
-                    extractTextFromPage(doc, i, textMap => {
+                    promises.push(extractTextFromPage(doc, i).then(textMap => {
                         // console.log(textMap);
                         // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
                         d.push(extractTextFromBox(textMap, {
@@ -436,9 +467,12 @@ const setupEventHandlers = docViewer => {
                             x2,
                             y2
                         }));
-                    });
+                    }));
                 }
-                console.log(d);
+                Promise.all(promises).then(() => {
+                    console.log(d, d.length);
+                    generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
+                });
             });
         } else if (action === 'modify') {
             console.log('this change modified annotations', event);
