@@ -18134,20 +18134,41 @@ const templateItem = (boxCoordinates, keyWord, type, structure) => {
     const item = `
     <div class="editing_template_item hover_up_background">
         <div>
-            <b>Box</b>: ${boxCoordinates}
+            <b>Box: </b> <span>${boxCoordinates}</span>
         </div>
         <div>
-            <b>KeyWord</b>: ${keyWord}
+            <b>KeyWord: </b> <span>${keyWord}</span>
         </div>
         <div>
-            <b>Type</b>: ${type}
+            <b>Type: </b> <span>${type}</span>
         </div>
         <div>
-            <b>Structure</b>: ${structure}
+            <b>Structure: </b> <span>${structure}</span>
         </div>
     </div>
     `;
     $('#current_template_container').append(item);
+};
+
+const getBoxCoordinates = () =>
+    Array.from(document.querySelectorAll('#current_template_container>div>div:first-child>span')).map(e => e.innerText).map(s => JSON.parse(`{${s}}`));
+
+const excelTemplateSheets = () => Array.from(document.querySelectorAll(`[id*="excel_row_cell"] * input`));
+
+const getSheetNames = () => excelTemplateSheets().map(e => e.value);
+
+const getColumnsForRow = index => Array.from(document.querySelectorAll(`#excel_row_cell_${index} * select`)).map(e => Array.from(e.options).filter(e => e.selected)).map(e => e[0].value);
+
+const sheetNamesToAlaSqlItems = sheetNames => sheetNames.map(name => ({'sheetid': name, headers: true}));
+
+const getExcelTemplate = data => {
+    const sheetNames = getSheetNames();
+    const sheetsCount = excelTemplateSheets().length;
+    for (let i = 0; i < sheetsCount; i++) {
+        const columnsToFill = getColumnsForRow(i + 1);
+        console.log(columnsToFill);
+        generateExcel([data.map(arr => ({'NI': arr[0]}))], sheetNamesToAlaSqlItems(sheetNames));
+    }
 };
 
 // setup event handlers for the header
@@ -18167,16 +18188,6 @@ const setupEventHandlers = docViewer => {
     document.getElementById('select').addEventListener('click', () => {
         docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
     });
-
-    // document.getElementById('upload').addEventListener('change', event => {
-    //     const file = event.target.files[0];
-    //     console.log(file);
-    //     if (file) {
-    //         CoreControls.getDefaultPdfBackendType().then(backendType => {
-    //             renderPDF(backendType, file);
-    //         });
-    //     }
-    // });
 
     document.getElementById('upload').addEventListener('change', function () {
         const file = this.files[0];
@@ -18279,6 +18290,48 @@ const setupEventHandlers = docViewer => {
         };
     });
 
+    document.getElementById('add_sheet').addEventListener('click', () => {
+        const keyWords = getChipValues('keyWordsModal').map(k => `<option> ${k} </option>`).join('\n');
+        const index = $('#excel_sheets_container').children().length + 1;
+        const html  = 
+        `<div id="excel_row_cell_${index}" class="excel_column_design hover_up_background margin_top_20px">
+            <div class="excel_row_design_space_evenly">
+                <div class="excel_row_design_flex_start">
+                    <span class="padding_right_20px">Sheet Name: </span>
+                    <input type="text">
+                </div>
+                <button id="add_column_${index}" class="width_100px">Add Column</button>
+            </div>
+            <div class="excel_row_design_flex_start padding_left_50px">
+                <span class="padding_right_20px"> Column: </span>
+                <select>
+                    ${keyWords}
+                </select>
+            </div>
+        </div>
+        `;
+        $('#excel_sheets_container').append(html);
+    });
+
+    document.getElementById('excel_sheets_container').addEventListener('click', event => {
+        const keyWords = getChipValues('keyWordsModal').map(k => `<option> ${k} </option>`).join('\n');
+        if (event.target.id && event.target.id.includes('add_column')) {
+            const index = event.target.id.match(/(\d+)/)[0];
+            $(`#excel_row_cell_${index}`).append(`
+                <div class="excel_row_design_flex_start padding_left_50px">
+                    <span class="padding_right_20px"> Column: </span>
+                    <select>
+                        ${keyWords}
+                    </select>
+                </div>`
+            );
+        }
+    });
+
+    document.getElementById('clear_sheet').addEventListener('click', () => {
+        $('#excel_sheets_container').empty();
+    });
+
     document.getElementById('generateExcel').addEventListener('click', () => {
         const modal = document.getElementById("runProcessModal");
         modal.style.display = "block";
@@ -18292,6 +18345,27 @@ const setupEventHandlers = docViewer => {
 
     document.getElementById('runProcess').addEventListener('click', () => {
         // Generate Excel Sheet
+        const doc = docViewer.getDocument();
+        const pageCount = doc.getPageCount();
+        const coordinates = getBoxCoordinates();
+        const data = [];
+        const promises = [];
+        if (excelTemplateSheets().length > 0) {
+            for (let i = 0; i < pageCount; i++) {
+                promises.push(extractTextFromPage(doc, i).then(textMap => {
+                    coordinates.forEach( ({x1, y1, x2, y2}) => {
+                        // console.log(textMap);
+                        // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
+                        data.push(extractTextFromBox(textMap, { x1, y1, x2, y2}));
+                    });
+                }));
+            }
+            Promise.all(promises).then(() => {
+                console.log(data, data.length);
+                const excelTemplate = getExcelTemplate(data);
+                // generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
+            });
+        }
     });
 
     // const annotationChangeContainer = document.getElementById('annotation-change');
@@ -18304,31 +18378,12 @@ const setupEventHandlers = docViewer => {
             const doc = docViewer.getDocument();
             annotations.forEach(annotation => {
                 const pageIndex = annotation.getPageNumber() - 1;
-                const pageCount = doc.getPageCount();
                 const bottomLeft = doc.getPDFCoordinates(pageIndex, annotation.getLeft(), annotation.getBottom());
                 const [x1, y1] = [bottomLeft.x, bottomLeft.y];
                 const topRight = doc.getPDFCoordinates(pageIndex, annotation.getRight(), annotation.getTop());
                 const [x2, y2] = [topRight.x, topRight.y];
-                // const d = [];
-                // const promises = [];
-                // for (let i = 0; i < pageCount; i++) {
-                //     promises.push(extractTextFromPage(doc, i).then(textMap => {
-                //         // console.log(textMap);
-                //         // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
-                //         d.push(extractTextFromBox(textMap, {
-                //             x1,
-                //             y1,
-                //             x2,
-                //             y2
-                //         }));
-                //     }));
-                // }
-                // Promise.all(promises).then(() => {
-                //     console.log(d, d.length);
-                //     generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
-                // });
 
-                fillAnnotationModal(`X1: ${x1}, Y1: ${y1}, X2: ${x2}, Y2: ${y2}`);
+                fillAnnotationModal(`"x1": ${x1}, "y1": ${y1}, "x2": ${x2}, "y2": ${y2}`);
                 const modal = document.getElementById("annotationModal");
                 modal.style.display = "block";
                 // When the user clicks anywhere outside of the modal, close it

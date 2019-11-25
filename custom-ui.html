@@ -85,7 +85,7 @@
                             <div class="chip">MultiLine
                                 <span class="closebtn">&times;</span>
                             </div>
-                            <div class="chip">structures 3
+                            <div class="chip">Grid
                                 <span class="closebtn">&times;</span>
                             </div>
                             <input type="text" class="chip-input" id="structures-chip-input">
@@ -141,22 +141,12 @@
                     <div class="modal-content">
                         <h3 class="textAlignCenter"> Excel Template </h3>
                         <div class="excel_sheet_design hover_up_background">
-                            <button class="width_100px">Add Sheet</button>
-                            <div class="excel_column_design hover_up_background">
-                                <button class="width_100px">Add Column</button>
-                                <div class="excel_column_name_and_value">
-                                    <span>Column Name: </span>
-                                    <input type="text">
-                                    <span>Value: </span>
-                                    <select>
-                                        <option>NI</option>
-                                        <option>Full Name</option>
-                                        <option>Full Name1</option>
-                                        <option>Full Name2</option>
-                                        <option>Full Name3</option>
-                                        <option>Full Name4</option>
-                                    </select>
-                                </div>
+                            <div class="excel_row_design_space_evenly">
+                                <button id="add_sheet" class="width_100px">Add Sheet</button>
+                                <button id="clear_sheet" class="width_100px">Clear Sheets</button>
+                            </div>
+                            <div id="excel_sheets_container">
+
                             </div>
                         </div>
                     </div>

@@ -226,12 +226,46 @@ body {
     justify-content: space-around;
 }
 
-.excel_column_name_and_value {
+.excel_row_design_space_evenly {
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;
 }
 
+.excel_row_design_flex_start {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+
 .width_100px {
     width: 100px;
+}
+
+.padding_left_50px {
+    padding-left: 50px;
+}
+
+.padding_right_20px {
+    padding-right: 20px;
+}
+
+.padding_top_50px {
+    padding-top: 50px;
+}
+
+.padding_bottom_20px {
+    padding-bottom: 20px;
+}
+
+.margin_top_20px {
+    margin-top: 20px;
+}
+
+#add_sheet {
+    margin: 5px 0px 10px 30px;
+}
+
+#clear_sheet {
+    margin: 5px 0px 10px 30px;
 }
