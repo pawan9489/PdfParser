@@ -4,6 +4,7 @@ body {
     margin: 0;
     height: 100%;
     overflow: hidden;
+    scroll-behavior: smooth;
 }
 
 #header {
@@ -163,4 +164,47 @@ body {
     min-width: 30px;
     border:none;
     outline: none;
+}
+
+.annotationModalForm {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+.annotationModalRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.textAlignCenter {
+    text-align: center;
+}
+
+#current_template {
+    height: 100%;
+    position: relative;
+}
+
+#existing_templates {
+    height: 20%;
+    position: relative;
+}
+
+#current_template_container {
+    height: 90%;
+    position: absolute;
+    overflow-y: auto;
+}
+
+.editing_template_item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    background: transparent;
+    border-radius: 9px 9px 9px 9px;
+    overflow: hidden;
+    box-shadow: 1px 1px 11px #330033;
+    padding: 5px 5px;
 }

@@ -19,25 +19,25 @@
             <div id="keyWordsModal" class="modal">
                 <div class="modal-content">
                     <!-- <span class="close">&times;</span> -->
-                    <p>Key words to Capture</p>
+                    <h3 class="textAlignCenter">Key words to Capture</h3>
                     <div class="chips chips-initial input-field">
                         <div class="chip">NI Number
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Full Name
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Earnings
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Deductions
-                            <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Salary
-                            <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
-                        <input type="text" class="chip-input" id="keyWords-chip-input"> 
-                     </div>
+                        <input type="text" class="chip-input" id="keyWords-chip-input">
+                    </div>
                 </div>
             </div>
 
@@ -45,31 +45,31 @@
             <div id="typesModal" class="modal">
                 <div class="modal-content">
                     <!-- <span class="close">&times;</span> -->
-                    <p>Types of data</p>
+                    <h3 class="textAlignCenter">Types of data</h3>
                     <div class="chips chips-initial input-field">
-                        <div class="chip"> ^\s*[a-zA-Z]{2}(?:\s*\d\s*){6}[a-zA-Z]?\s*$
-                            <span class="closebtn" >&times;</span>
+                        <div class="chip"> NI
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">String
-                            <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Number
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">String - Number.2 - Number.4
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Number.2
-                           <span class="closebtn" >&times;</span> 
+                            <span class="closebtn">&times;</span>
                         </div>
                         <div class="chip">Number.3
-                            <span class="closebtn" >&times;</span> 
-                         </div>
-                         <div class="chip">Number.4
-                            <span class="closebtn" >&times;</span> 
-                         </div>
-                        <input type="text" class="chip-input" id="types-chip-input"> 
-                     </div>
+                            <span class="closebtn">&times;</span>
+                        </div>
+                        <div class="chip">Number.4
+                            <span class="closebtn">&times;</span>
+                        </div>
+                        <input type="text" class="chip-input" id="types-chip-input">
+                    </div>
                 </div>
             </div>
 
@@ -77,19 +77,19 @@
             <div id="structuresModal" class="modal">
                 <div class="modal-content">
                     <!-- <span class="close">&times;</span> -->
-                    <p>Structures Modal</p>
-                    <div class="chips chips-initial input-field">
-                        <div class="chip">SingleLine
-                           <span class="closebtn" >&times;</span> 
+                    <h3 class="textAlignCenter">Structures Modal</>
+                        <div class="chips chips-initial input-field">
+                            <div class="chip">SingleLine
+                                <span class="closebtn">&times;</span>
+                            </div>
+                            <div class="chip">MultiLine
+                                <span class="closebtn">&times;</span>
+                            </div>
+                            <div class="chip">structures 3
+                                <span class="closebtn">&times;</span>
+                            </div>
+                            <input type="text" class="chip-input" id="structures-chip-input">
                         </div>
-                        <div class="chip">MultiLine
-                           <span class="closebtn" >&times;</span> 
-                        </div>
-                        <div class="chip">structures 3
-                           <span class="closebtn" >&times;</span> 
-                        </div>                            
-                        <input type="text" class="chip-input" id="structures-chip-input"> 
-                     </div>
                 </div>
             </div>
         </div>
@@ -101,16 +101,49 @@
     </div>
     <div id="selections_plus_view">
         <div id="selections">
-            <div id="current_template"> Current Editing Template </div>
-            <div id="existing_templates" class="pdfTemplate"> Existing PDF Templates</div>
+            <div id="current_template">
+                <h4 class="textAlignCenter"> Current Editing Template </h4>
+                <div id="current_template_container">
+                </div>
+            </div>
+            <div id="existing_templates" class="pdfTemplate">
+                <h4 class="textAlignCenter"> Existing PDF Templates</h4>
+            </div>
         </div>
         <div id="scroll-view">
             <div id="viewer"></div>
         </div>
+        <div id="annotationModal" class="modal">
+            <div class="modal-content">
+                <h3 class="textAlignCenter"> Template Item </h3>
+                <div id="annotationBoxCoordinates"></div>
+                <div class="annotationModalForm">
+                    <div class="annotationModalRow">
+                        <span>Keywords: </span>
+                        <select id="keyWordsDropDown"></select>
+                    </div>
+                    <div class="annotationModalRow">
+                        <span>Types: </span>
+                        <select id="typesDropDown"></select>
+                    </div>
+                    <div class="annotationModalRow">
+                        <span>Structures: </span>
+                        <select id="structuresDropDown"></select>
+                    </div>
+                    <button id="annotationSave">Save</button>
+                </div>
+            </div>
+        </div>
         <div id="rough_and_run">
-            <div id="excel_tempalte"> Create Excel Template </div>
-            <div id="existing_excel_templates"> Existing Excel Templates</div>
-            <div id="run">Run</div>
+            <div id="excel_tempalte">
+                <h4 class="textAlignCenter"> Create Excel Template </h4>
+            </div>
+            <div id="existing_excel_templates">
+                <h4 class="textAlignCenter"> Existing Excel Templates</h4>
+            </div>
+            <div id="run">
+                <h4 class="textAlignCenter"> Run</h4>
+            </div>
         </div>
     </div>
     <script src="lib/core/external/jquery-3.2.1.min.js"></script>

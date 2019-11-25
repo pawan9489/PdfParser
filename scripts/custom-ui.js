@@ -335,6 +335,49 @@ const generateExcel = (sheetsData, options) => {
     alasql(`SELECT * INTO XLSX('${fileName}', ?) FROM ?`, [options, sheetsData]);
 };
 
+// Ex: typesModal -> ["NI", "String", "Number.2", "Number.4"]
+const getChipValues = modal_id => Array.from(document.querySelectorAll(`#${modal_id} .chip`)).map(e => e.innerText.split("\n")[0].split('×')[0].trim());
+
+const fillElements = (fromModal, intoSection, elementType) => {
+    $(`#${intoSection}`).empty();
+    getChipValues(fromModal).forEach(word => {
+        $(`#${intoSection}`).append(`
+            <${elementType}> ${word} </${elementType}>
+        `);
+    });
+};
+
+const fillAnnotationModal = (boxCoordinates) => {
+    // Requires 3 dropdowns
+    // Keywords
+    // Types
+    // Structures
+    $('#annotationBoxCoordinates').html(boxCoordinates);
+    fillElements('keyWordsModal', 'keyWordsDropDown', 'option');
+    fillElements('typesModal', 'typesDropDown', 'option');
+    fillElements('structuresModal', 'structuresDropDown', 'option');
+};
+
+const templateItem = (boxCoordinates, keyWord, type, structure) => {
+    const item = `
+    <div class="editing_template_item">
+        <div>
+            <b>Box</b>: ${boxCoordinates}
+        </div>
+        <div>
+            <b>KeyWord</b>: ${keyWord}
+        </div>
+        <div>
+            <b>Type</b>: ${type}
+        </div>
+        <div>
+            <b>Structure</b>: ${structure}
+        </div>
+    </div>
+    `;
+    $('#current_template_container').append(item);
+};
+
 // setup event handlers for the header
 const setupEventHandlers = docViewer => {
     document.getElementById('zoom-in-button').addEventListener('click', () => {
@@ -440,6 +483,19 @@ const setupEventHandlers = docViewer => {
         $(this).parent().remove();
     });
 
+    document.getElementById('annotationSave').addEventListener('click', () => {
+        // Fetch the Current AnnotationModal boxCoordinates, keyWord, type, structure
+        const boxCoordinates = $('#annotationBoxCoordinates').html();
+        const keyWord = Array.from($('#keyWordsDropDown').children()).filter(x => x.selected)[0].value;
+        const type = Array.from($('#typesDropDown').children()).filter(x => x.selected)[0].value;
+        const structure = Array.from($('#structuresDropDown').children()).filter(x => x.selected)[0].value;
+        templateItem(boxCoordinates, keyWord, type, structure);
+
+        // After save close the popup
+        const modal = document.getElementById("annotationModal");
+        modal.style.display = "none";
+    });
+
     // const annotationChangeContainer = document.getElementById('annotation-change');
 
     const annotManager = docViewer.getAnnotationManager();
@@ -455,24 +511,34 @@ const setupEventHandlers = docViewer => {
                 const [x1, y1] = [bottomLeft.x, bottomLeft.y];
                 const topRight = doc.getPDFCoordinates(pageIndex, annotation.getRight(), annotation.getTop());
                 const [x2, y2] = [topRight.x, topRight.y];
-                const d = [];
-                const promises = [];
-                for (let i = 0; i < pageCount; i++) {
-                    promises.push(extractTextFromPage(doc, i).then(textMap => {
-                        // console.log(textMap);
-                        // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
-                        d.push(extractTextFromBox(textMap, {
-                            x1,
-                            y1,
-                            x2,
-                            y2
-                        }));
-                    }));
-                }
-                Promise.all(promises).then(() => {
-                    console.log(d, d.length);
-                    generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
-                });
+                // const d = [];
+                // const promises = [];
+                // for (let i = 0; i < pageCount; i++) {
+                //     promises.push(extractTextFromPage(doc, i).then(textMap => {
+                //         // console.log(textMap);
+                //         // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
+                //         d.push(extractTextFromBox(textMap, {
+                //             x1,
+                //             y1,
+                //             x2,
+                //             y2
+                //         }));
+                //     }));
+                // }
+                // Promise.all(promises).then(() => {
+                //     console.log(d, d.length);
+                //     generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
+                // });
+
+                fillAnnotationModal(`X1: ${x1}, Y1: ${y1}, X2: ${x2}, Y2: ${y2}`);
+                const modal = document.getElementById("annotationModal");
+                modal.style.display = "block";
+                // When the user clicks anywhere outside of the modal, close it
+                window.onclick = function (event) {
+                    if (event.target == modal) {
+                        modal.style.display = "none";
+                    }
+                };
             });
         } else if (action === 'modify') {
             console.log('this change modified annotations', event);
@@ -489,3 +555,5 @@ CoreControls.getDefaultPdfBackendType().then(backendType => {
     // setupEventHandlers(docViewer);
     renderPDF(backendType, '../pdfs/Payslips_July_19.pdf');
 });
+
+// /^[A-Z]{1,2}\d{1,3}\s*\d{1,3}[A-Z]{1,2}$/
