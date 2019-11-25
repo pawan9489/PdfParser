@@ -15,11 +15,12 @@ Y = Botton to Top
 
 ToDo:
 1. Upload pdf with some random pdf
-2. Create Modals & Store Data
-3. Store KeyWords, Types, Structures
-4. Add Annotations as PDF templates, 
+2. Create Modals & Store Data - Done
+3. Store KeyWords, Types, Structures - Done
+4. Add Annotations as PDF templates - Done
 5. Select existing PDF templates
 6. Cache the pages read
 7. Annotations must create a Rough Sketch
 8. Create Excel templates
 9. Write to Excel & Download
+10. When deleted annotation it must delete the corresponding template item & vice versa

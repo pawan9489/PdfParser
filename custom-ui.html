@@ -135,14 +135,46 @@
             </div>
         </div>
         <div id="rough_and_run">
-            <div id="excel_tempalte">
-                <h4 class="textAlignCenter"> Create Excel Template </h4>
+            <div id="excel_tempalte" class="textAlignCenter">
+                <button id="createExcelTemplate"> Create Excel Template </button>
+                <div id="excelTemplateModal" class="modal">
+                    <div class="modal-content">
+                        <h3 class="textAlignCenter"> Excel Template </h3>
+                        <div class="excel_sheet_design hover_up_background">
+                            <button class="width_100px">Add Sheet</button>
+                            <div class="excel_column_design hover_up_background">
+                                <button class="width_100px">Add Column</button>
+                                <div class="excel_column_name_and_value">
+                                    <span>Column Name: </span>
+                                    <input type="text">
+                                    <span>Value: </span>
+                                    <select>
+                                        <option>NI</option>
+                                        <option>Full Name</option>
+                                        <option>Full Name1</option>
+                                        <option>Full Name2</option>
+                                        <option>Full Name3</option>
+                                        <option>Full Name4</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="existing_excel_templates">
                 <h4 class="textAlignCenter"> Existing Excel Templates</h4>
             </div>
-            <div id="run">
-                <h4 class="textAlignCenter"> Run</h4>
+            <div id="run" class="textAlignCenter">
+                <button id="generateExcel"> Generate Excel </button>
+                <div id="runProcessModal" class="modal">
+                    <div class="modal-content">
+                        <h3 class="textAlignCenter"> Generate Excel </h3>
+                        <section id="pdfTemplateSection"></section>
+                        <section id="excelTemplateSection"></section>
+                        <button id="runProcess"> Run </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

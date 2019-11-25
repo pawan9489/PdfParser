@@ -59,6 +59,7 @@ body {
 
 #excel_tempalte {
     height: 50%;
+    padding: 20px 0px;
 }
 
 #existing_excel_templates {
@@ -67,6 +68,7 @@ body {
 
 #run {
     height: 10%;
+    padding: 20px 0px;
 }
 
 
@@ -198,13 +200,38 @@ body {
     overflow-y: auto;
 }
 
-.editing_template_item {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
+.hover_up_background {
     background: transparent;
     border-radius: 9px 9px 9px 9px;
     overflow: hidden;
     box-shadow: 1px 1px 11px #330033;
     padding: 5px 5px;
+}
+
+.editing_template_item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+.excel_sheet_design {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+.excel_column_design {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+.excel_column_name_and_value {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+.width_100px {
+    width: 100px;
 }

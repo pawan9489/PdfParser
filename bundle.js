@@ -18132,7 +18132,7 @@ const fillAnnotationModal = (boxCoordinates) => {
 
 const templateItem = (boxCoordinates, keyWord, type, structure) => {
     const item = `
-    <div class="editing_template_item">
+    <div class="editing_template_item hover_up_background">
         <div>
             <b>Box</b>: ${boxCoordinates}
         </div>
@@ -18266,6 +18266,32 @@ const setupEventHandlers = docViewer => {
         // After save close the popup
         const modal = document.getElementById("annotationModal");
         modal.style.display = "none";
+    });
+
+    document.getElementById('createExcelTemplate').addEventListener('click', () => {
+        const modal = document.getElementById("excelTemplateModal");
+        modal.style.display = "block";
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+    });
+
+    document.getElementById('generateExcel').addEventListener('click', () => {
+        const modal = document.getElementById("runProcessModal");
+        modal.style.display = "block";
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+    });
+
+    document.getElementById('runProcess').addEventListener('click', () => {
+        // Generate Excel Sheet
     });
 
     // const annotationChangeContainer = document.getElementById('annotation-change');
