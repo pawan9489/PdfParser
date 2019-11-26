@@ -17785,6 +17785,12 @@ let cached_pages = {};
 // X = Left to Right
 // Y = Botton to Top
 
+const repeatingZip = (arr1, arr2) => {
+    const len_diff = Math.abs(arr1.length - arr2.length);
+    const pattern = new Array(len_diff).fill(arr1.length > arr2.length ? arr2 : arr1).flatMap(_ => _);
+    return arr1.length > arr2.length ? _.zip(arr1, arr2.concat(pattern)) : _.zip(arr1.concat(pattern), arr2);
+};
+
 const zipTextWithCoordinates = textArray => {
     // Input - textArray = [
     //    ["text", text_length],
@@ -17989,7 +17995,7 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
     const filterd = filterRange(textMap, boxCoordinates);
     const result = [];
     filterd.forEach(line => {
-        let temp = "";
+        const temp = [];
         line.texts.forEach(word => {
             const {
                 text,
@@ -17999,10 +18005,10 @@ const extractTextFromBox = (textMap, boxCoordinates) => {
                 y2
             } = word;
             if (decideToTakeWord(Number(x1), Number(x2), bx1, bx2)) {
-                temp += text;
+                temp.push(text);
             }
         });
-        if (temp !== "") {
+        if (temp.length !== 0) {
             result.push(temp);
         }
     });
@@ -18153,22 +18159,138 @@ const templateItem = (boxCoordinates, keyWord, type, structure) => {
 const getBoxCoordinates = () =>
     Array.from(document.querySelectorAll('#current_template_container>div>div:first-child>span')).map(e => e.innerText).map(s => JSON.parse(`{${s}}`));
 
+const getBoxKeyWords = () => Array.from(document.querySelectorAll('#current_template_container>div>div:nth-child(2)>span')).map(e => e.innerText);
+
+const getBoxTypes = () => Array.from(document.querySelectorAll('#current_template_container>div>div:nth-child(3)>span')).map(e => e.innerText);
+
+const getBoxStructures = () => Array.from(document.querySelectorAll('#current_template_container>div>div:last-child>span')).map(e => e.innerText);
+
 const excelTemplateSheets = () => Array.from(document.querySelectorAll(`[id*="excel_row_cell"] * input`));
 
 const getSheetNames = () => excelTemplateSheets().map(e => e.value);
 
-const getColumnsForRow = index => Array.from(document.querySelectorAll(`#excel_row_cell_${index} * select`)).map(e => Array.from(e.options).filter(e => e.selected)).map(e => e[0].value);
+const getColumnsPerSheet = index => Array.from(document.querySelectorAll(`#excel_row_cell_${index} * select`)).map(e => Array.from(e.options).filter(e => e.selected)).map(e => e[0].value);
 
 const sheetNamesToAlaSqlItems = sheetNames => sheetNames.map(name => ({'sheetid': name, headers: true}));
 
-const getExcelTemplate = data => {
+const getSheetNameAndColumnsInfo = () => {
     const sheetNames = getSheetNames();
     const sheetsCount = excelTemplateSheets().length;
+    const res = {};
     for (let i = 0; i < sheetsCount; i++) {
-        const columnsToFill = getColumnsForRow(i + 1);
-        console.log(columnsToFill);
-        generateExcel([data.map(arr => ({'NI': arr[0]}))], sheetNamesToAlaSqlItems(sheetNames));
+        res[sheetNames[i]] = getColumnsPerSheet(i + 1);
     }
+    return res;
+};
+
+const typeToRegex = type => {
+    // Can accept only 3 kinds of types
+    // NI - /^[A-CEGHJ-PR-TW-Z]{1}[A-CEGHJ-NPR-TW-Z]{1}[0-9]{6}[A-DFM]{0,1}$/
+    // String - Do Nothing
+    // Number.x - /(\d{1,}\.\d{x})/
+    if (type === "NI") {
+        return /^[A-CEGHJ-PR-TW-Z]{1}[A-CEGHJ-NPR-TW-Z]{1}[0-9]{6}[A-DFM]{0,1}$/;
+    } else if (type.match(/^Number\.\d$/)) {
+        return new RegExp(`(\\d{1,}\\.\\d{${type.match(/^Number\.(\d)$/)[1]}})`);
+    } else {
+        throw new Error(`Can only accept "NI", "Number.x" types.`);
+    }
+};
+
+const separateNumbersWithDecimals = (data, type) => {
+    // Assuming this function will be called only with type that have Number.x's to the end
+    // data - ["Salary", "1.00 8968.7500", "8968.75"]
+    // type - 'String - Number.2 - Number.4 - Number.2'
+    // output - ["Salary", "1.00", "8968.7500", "8968.75"]
+    const types = type.split(/\s*-\s*/);
+    const numbers_values = _.zip(types, data).filter(arr => arr[0].includes('Number'));
+    // [ ["Number.2", "1.00 8968.7500"]
+    //   ["Number.4", "8968.75"]
+    //   ["Number.2", undefined] ]
+    const numbers = numbers_values.map(x => x[1]).join(''); // "1.00 8968.75008968.75"
+    const number_types = numbers_values.map(x => x[0]);
+    const reg = new RegExp(number_types).map(typeToRegex).map(x => x.source).join('\\s*'); // /(\d{1,}\.\d{2})\s*(\d{1,}\.\d{4})\s*(\d{1,}\.\d{2})/
+    const matches = numbers.match(reg);
+    return number_types.map((_, i) => matches[i + 1]); // ["1.00", "8968.7500", "8968.75"]
+};
+
+const parseDataWrtTypes = (data, type, isSingleLiner) => {
+    // The whole point of "types" here is to separate Numbers from each other but not to separate strings (which is impossible)
+    // data :: [SingleLineData | MultiLineData]
+    // data :: [[String]]
+    // For each element in inner array apply the type & separate them out
+    // type - String | NI | Number.x | String - Number.x - Number.x | ...
+    // isSingleLiner - true if data is of SingleLined Structure, then filter inner array to [Array:1_length] using the type information
+    // isSingleLiner - false if data is Grid Structure, then don't cut data, just parse individual elements in inner array & seperate them
+    // If data = [["JA405129B"], ["KJ405129C"]] => [["JA405129B"], ["KJ405129C"]]
+    // If Overselected the NI numbers to include some extra text them cut that down
+    // If data = [["Paye", "JA405129B"], ["KJ405129C", "Tax"]] => [["JA405129B"], ["KJ405129C"]]
+    // If data = [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]] & type = "String - Number.2 - Number.4 - Number.2"
+    // => [[["Salary", "1.00", "8968.7500", "8968.75"], ["Car Allowance", "1.00", "400.0000", "400.00"], ["Commission", "1.00", "13942.6600", "13942.66"]]]
+    if (isSingleLiner) { 
+        if (type === 'String') {
+            return data.map(arr => arr.join(' '));
+        } else if (type.match(/^Number\.\d$/) || type === 'NI') {
+            return data.map(arr => arr.filter(s => s.match(typeToRegex(type))));
+        } else {
+            throw new Error(`Unknown type for a single liner.`);
+        }
+    } else { // Grid
+        // If type contains multiple numbers then fuse the numbers
+        if (type.filter(e => e.includes('Number')).length > 1) {
+            return data.map(grid => grid.map(row => separateNumbersWithDecimals(row, type)));
+        }
+        // Return data if simple data type
+        return data;
+    }
+};
+
+const convertTemplateToStructures = (template, keyWords, structures) => {
+    // keyWords - ["NI Number", "Deductions"]
+    // structures - ["SingleLine", "Grid"]
+    // template - ["NI Number"]
+    // output - ["SingleLine"]
+    return template.map(t => structures[keyWords.indexOf(t)]);
+};
+
+const packColumnsWrtStructure = (data, keyWords, structures, excel_template) => {
+    // data - {'NI Number': [['a'], ['b']], 'Deductions': [[['r', 'q', 't']], [['r', 'q', 't']]]}
+    // keyWords - ["NI Number", "Deductions"]
+    // structures - ["SingleLine", "Grid"]
+    // excelTemplate - {'NI Info': ["NI Number"], 'Deductions': ["NI Number", "Deductions"]}
+    // output - [[{'NI': 'a'}, {'NI', 'b'}], [{'NI': 'a', 'rate': 'r', 'quantity': 'q', 'total': 't'}, {'NI': 'b', 'rate': 'r', 'quantity': 'q', 'total': 't'}]]
+    const sheets = [];
+    for (const template in excel_template) {
+        // Push array of objects - Rows of Column:Value
+        const columns = excel_template[template];
+        if (convertTemplateToStructures(columns, keyWords, structures).filter(e => e.includes('Single')).length === columns.length) { // All Columns are single values
+            const data_to_zip = columns.map(t => data[t]);
+            if (data_to_zip.length === 1) {
+                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
+            } else {
+                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
+            }
+        }
+    }
+    return sheets;
+};
+
+const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_template) => {
+    // Hoping users will have unique keywords for each annoation they selected
+    // and hence we can fetch the proper types & structures using keyWords index
+    // data - {"keyWord": ["...", "...", "..."], "keyWord": ["...", "..."]}
+    // keyWords - ["NI Number", "Deductions"]
+    // types - ["NI", "String - Number.2"]
+    // structures - ["SingleLine", "MultiLine", "Key Value", "Grid"]
+    // excelTemplate - {'Sheet1': [KeyWord1, KeyWord2], 'Sheet2': [KeyWord1]}
+    // output - [[Sheet1Data], [Sheet2Data], ...]
+    const parsed_data = {};
+    for (const keyWord in data) {
+        const index = keyWords.indexOf(keyWord);
+        // data[keyWord] - [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]]
+        parsed_data[keyWord] = parseDataWrtTypes(data[keyWord], types[index], structures[index].includes('Single'));
+    }
+    return packColumnsWrtStructure(parsed_data, keyWords, structures, excel_template);
 };
 
 // setup event handlers for the header
@@ -18345,25 +18467,35 @@ const setupEventHandlers = docViewer => {
 
     document.getElementById('runProcess').addEventListener('click', () => {
         // Generate Excel Sheet
-        const doc = docViewer.getDocument();
-        const pageCount = doc.getPageCount();
-        const coordinates = getBoxCoordinates();
-        const data = [];
+        const data = {};
         const promises = [];
+        console.log(excelTemplateSheets().length);
         if (excelTemplateSheets().length > 0) {
+            const doc = docViewer.getDocument();
+            const pageCount = doc.getPageCount();
+            const coordinates = getBoxCoordinates();
+            const keyWords = getBoxKeyWords();
+            const types = getBoxTypes(); // How to read the extracted data from PDF
+            const structures = getBoxStructures(); // How to Port them to Excel, map or flatmap, ex: Every earning will have one NI, when we put NI & Earnings side by side as excel columns
+            console.log(coordinates, keyWords);
+            const sheetNames = getSheetNames();
+            const excel_template = getSheetNameAndColumnsInfo(); // {'Sheet1': [Col1, Col2], 'Sheet2': [Col1]}
             for (let i = 0; i < pageCount; i++) {
                 promises.push(extractTextFromPage(doc, i).then(textMap => {
-                    coordinates.forEach( ({x1, y1, x2, y2}) => {
-                        // console.log(textMap);
-                        // console.log('Box Co-Cordinates ', {x1, y1, x2, y2});
-                        data.push(extractTextFromBox(textMap, { x1, y1, x2, y2}));
+                    // console.log(textMap);
+                    coordinates.forEach( ({x1, y1, x2, y2}, j) => {
+                        // Extracting data is totally based on annotations drawn
+                        if (data[keyWords[j]]) {
+                            data[keyWords[j]].push(extractTextFromBox(textMap, { x1, y1, x2, y2}));
+                        } else {
+                            data[keyWords[j]] = [extractTextFromBox(textMap, { x1, y1, x2, y2})];
+                        }
                     });
                 }));
             }
             Promise.all(promises).then(() => {
-                console.log(data, data.length);
-                const excelTemplate = getExcelTemplate(data);
-                // generateExcel([d.map(arr => ({'NI': arr[0]}))], [{'sheetid': 'NI Info', headers: true}]);
+                console.log(data);
+                generateExcel(fuseDataWithExcelTemplate(data, keyWords, types, structures, excel_template), sheetNamesToAlaSqlItems(sheetNames));
             });
         }
     });
