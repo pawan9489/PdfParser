@@ -18248,12 +18248,66 @@ const parseDataWrtTypes = (data, type, isSingleLiner) => {
     }
 };
 
-const convertColumnsToStructures = (columns, keyWords, structures) => {
-    // keyWords - ["NI Number", "Deductions"]
-    // structures - ["SingleLine", "Grid"]
-    // columns - ["NI Number"]
-    // output - ["SingleLine"]
-    return columns.map(t => structures[keyWords.indexOf(t)]);
+const seperateSingleLinersFromMultiLiners = (columns, keyWords, structures) => {
+    // columns = [Col1, Col2, Col2] => Output = [[Col1, Col2], [Col3]]
+    // columns = ["NI Number", "Earnings", "Deductions"] => Output = [["NI Number"], ["Earnings", "Deductions"]]
+    return [columns.filter(t => structures[keyWords.indexOf(t)].includes('Single')), columns.filter(t => ! structures[keyWords.indexOf(t)].includes('Single'))];
+};
+
+const evenOutMultiLiners = (multiLinerFilteredData, maxLengthOfMultiLiners) => {
+    return multiLinerFilteredData.map(grid_data => {
+        if (grid_data.length === maxLengthOfMultiLiners) {
+            return grid_data;
+        } else {
+            // Fill empty
+            if (grid_data.length === 0) {
+                return [{}];
+            } else {
+                return grid_data.concat(new Array(maxLengthOfMultiLiners - grid_data.length).fill(Object.keys(grid_data[0]).reduce((acc, key) => {acc[key] = ""; return acc;}, {})));
+            }
+        }
+    });
+};
+
+const fuseSingleLinersAndMultiLiners = (singleLiner_data, multiLiner_data) => {
+    // singleLiner_data = [{v11, v12, pageNo: 0}, {v21, v22, pageNo: 1}]
+    // multiLiner_data = [ [{x11, x12, pageNo: 0}, {x21, x22, pageNo: 0}, {x31, x32, pageNo: 1}], [{y11, y12, pageNo: 0}, {y21, y22, pageNo: 1}, {y31, y32, pageNo: 1}] ]
+    if (singleLiner_data.length === 0) {
+        // Even the multiLiners & merge them
+        const maxPageNumber = _.max(multiLiner_data.map(grid_data => grid_data[grid_data.length - 1]['page'])); // max page number from all of multiliner data
+        const res = [];
+        for(let pageNo = 0; pageNo <= maxPageNumber; pageNo++) {
+            const multiLinerFilteredData = multiLiner_data.map(grid_data => grid_data.filter(obj => obj['page'] === pageNo));
+            const maxLengthOfMultiLiners = _.max(multiLinerFilteredData.map(x => x.length)); 
+            // Ex: NI (1), Full Name (1), Earnings (5), Deductions (7), => We need 7 rows in the Excel, Remaining Earnings will be empty & NI, Full Name are repeated
+            const multiLinerEvenedData = evenOutMultiLiners(multiLinerFilteredData, maxLengthOfMultiLiners);
+            // console.log(multiLinerEvenedData);
+            for (let index = 0; index < maxLengthOfMultiLiners; index++) {
+                res.push(_.assign({}, ...(multiLinerEvenedData.map(grid_data => _.omit(grid_data[index], 'page')))));
+            }
+        }
+        return res;
+    } else if (multiLiner_data.map(grid_data => grid_data.length).reduce((acc, x) => acc + x, 0) === 0) {
+        return singleLiner_data.map(obj => _.omit(obj, 'page'));
+    } else {
+        const res = [];
+        singleLiner_data.forEach(singleMerge => {
+            // singleMerge - {v11, v12, pageNo: 0}
+            const pageNo = singleMerge['page'];
+            const otherValues = _.omit(singleMerge, 'page');
+            // multiLiner_data - [ [{x11, x12, pageNo: 0}, {x21, x22, pageNo: 0}, {x31, x32, pageNo: 1}], [{y11, y12, pageNo: 0}, {y21, y22, pageNo: 1}, {y31, y32, pageNo: 1}] ]
+            const multiLinerFilteredData = multiLiner_data.map(grid_data => grid_data.filter(obj => obj['page'] === pageNo));
+            const maxLengthOfMultiLiners = _.max(multiLinerFilteredData.map(x => x.length)); 
+            // Ex: NI (1), Full Name (1), Earnings (5), Deductions (7), => We need 7 rows in the Excel, Remaining Earnings will be empty & NI, Full Name are repeated
+            const multiLinerEvenedData = evenOutMultiLiners(multiLinerFilteredData, maxLengthOfMultiLiners);
+            // console.log(multiLinerEvenedData);
+            const repeatedSingleLiners = new Array(maxLengthOfMultiLiners).fill(otherValues);
+            repeatedSingleLiners.forEach((singleLinerMerge, index) => {
+                res.push(_.assign({}, singleLinerMerge, ...(multiLinerEvenedData.map(grid_data => _.omit(grid_data[index], 'page')))));
+            });
+        });
+        return res;
+    }
 };
 
 const packColumnsWrtStructure = (data, keyWords, structures, excel_template) => {
@@ -18268,50 +18322,40 @@ const packColumnsWrtStructure = (data, keyWords, structures, excel_template) => 
         // Push array of objects - Rows of Column:Value
         // sheet -> ex: "NI Info", 
         const columns = excel_template[sheet]; // ex: ["NI Number"]
-        const data_to_zip = columns.map(column => data[column]); // [ Payslip Structure Words ] | MultipleColumns Payslip Structure Words
-        
-        if (convertColumnsToStructures(columns, keyWords, structures).filter(e => e.includes('Single')).length === columns.length) { // All Columns are single values
-            const sheetData = []; // [{'c1': v11, 'c2': v12}, {'c1': v21, 'c2': v22}]
-            // Length of sheetData = No.of Payslips in a pdf
-            data_to_zip.forEach((payslipsData, index) => {
-                // console.log(payslipsData);
-                payslipsData.forEach((payslip, pIndex) => {
-                    for (const structure of payslip) {
-                        for (const word of structure) {
-                            // console.log('word', word);
-                            if (sheetData[pIndex]) {
-                                sheetData[pIndex][columns[index]] = word;
-                            } else {
-                                sheetData.push(({[columns[index]]: word}));
-                            }
+        const [singleLiners, multiLiners] = seperateSingleLinersFromMultiLiners(columns, keyWords, structures);
+        const singleLiner_data = []; // [{v11, v12, pageNo: 0}, {v21, v22, pageNo: 1}]
+        const multiLiner_data = new Array(multiLiners.length).fill([]); // [ [{x11, x12, pageNo: 0}, {x21, x22, pageNo: 0}, {x31, x32, pageNo: 1}], [{y11, y12, pageNo: 0}, {y21, y22, pageNo: 1}, {y31, y32, pageNo: 1}] ] 
+        singleLiners.map(column => data[column]).forEach((payslipsData, index) => {
+            payslipsData.forEach((payslip, pIndex) => {
+                for (const structure of payslip) {
+                    for (const word of structure) {
+                        if (singleLiner_data[pIndex]) {
+                            singleLiner_data[pIndex][columns[index]] = word;
+                        } else {
+                            singleLiner_data.push(({[columns[index]]: word, 'page': pIndex}));
                         }
                     }
-                });
+                }
             });
-            sheets.push(sheetData);
-        } else { // sheet includes a grid
-            if (data_to_zip.length === 1) { // Only single grid data is required
-                const sheetData = [];
-                const column_names = [];
-                const payslipsData = data_to_zip[0];
-                payslipsData.forEach((payslip, pIndex) => {
-                    for (const structure of payslip) { // structure - ["Salary", "1.00", "3916.6700", "3916.67"]
-                        if (column_names.length === 0) {
-                            structure.map(_ => uniqueFilename('', 'Col')).forEach(c => column_names.push(c));
-                        }
-                        const temp = {};
-                        structure.forEach((word, i) => temp[column_names[i]] = word);
-                        sheetData.push(temp);
-                    }
-                });
-                console.log(sheetData);
-                sheets.push(sheetData);
-            } else { // SingleLine + Grid
-                // First fuse all single Lines & then zip with grid data
+        });
 
-            }
-        }
+        multiLiners.map(column => data[column]).forEach((payslipsData, index) => {
+            const sheetData = [];
+            const fake_column_names = [];
+            payslipsData.forEach((payslip, pIndex) => {
+                for (const structure of payslip) { // structure - ["Salary", "1.00", "3916.6700", "3916.67"]
+                    if (fake_column_names.length === 0) {
+                        structure.map(_ => uniqueFilename('', 'Col')).forEach(c => fake_column_names.push(c));
+                    }
+                    sheetData.push(structure.reduce((acc, word, i) => {acc[fake_column_names[i]] = word; return acc;}, {'page': pIndex}));
+                }
+            });
+            multiLiner_data[index] = sheetData;
+        });
+
+        sheets.push(fuseSingleLinersAndMultiLiners(singleLiner_data, multiLiner_data));
     }
+    // console.log(sheets);
     return sheets;
 };
 
@@ -18340,7 +18384,6 @@ const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_temp
         // data[keyWord] - [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]]
         parsed_data[keyWord] = parseDataWrtTypes(data[keyWord], types[index], structures[index].includes('Single'));
     }
-    console.log('parsed_data', parsed_data);
     return packColumnsWrtStructure(parsed_data, keyWords, structures, excel_template);
 };
 
@@ -18520,7 +18563,7 @@ const setupEventHandlers = docViewer => {
         // Generate Excel Sheet
         const data = {};
         const promises = [];
-        console.log(excelTemplateSheets().length);
+        // console.log(excelTemplateSheets().length);
         if (excelTemplateSheets().length > 0) {
             const doc = docViewer.getDocument();
             const pageCount = doc.getPageCount();
