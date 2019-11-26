@@ -18203,72 +18203,112 @@ const separateNumbersWithDecimals = (data, type) => {
     // type - 'String - Number.2 - Number.4 - Number.2'
     // output - ["Salary", "1.00", "8968.7500", "8968.75"]
     const types = type.split(/\s*-\s*/);
-    const numbers_values = _.zip(types, data).filter(arr => arr[0].includes('Number'));
+    const zippedData = _.zip(types, data);
+    const numbers_values = zippedData.filter(arr => arr[0].includes('Number'));
     // [ ["Number.2", "1.00 8968.7500"]
     //   ["Number.4", "8968.75"]
     //   ["Number.2", undefined] ]
+    const constantsAtStart = zippedData.filter(arr => ! arr[0].includes('Number')).map(arr => arr[1]); // Ex: ["Salary", "1.00 8968.7500", "8968.75"] => ["Salary"]
     const numbers = numbers_values.map(x => x[1]).join(''); // "1.00 8968.75008968.75"
-    const number_types = numbers_values.map(x => x[0]);
-    const reg = new RegExp(number_types).map(typeToRegex).map(x => x.source).join('\\s*'); // /(\d{1,}\.\d{2})\s*(\d{1,}\.\d{4})\s*(\d{1,}\.\d{2})/
+    const number_types = numbers_values.map(x => x[0]); // ["Number.2", "Number.4", "Number.2"]
+    const reg = new RegExp(number_types.map(typeToRegex).map(x => x.source).join('\\s*')); // /(\d{1,}\.\d{2})\s*(\d{1,}\.\d{4})\s*(\d{1,}\.\d{2})/
     const matches = numbers.match(reg);
-    return number_types.map((_, i) => matches[i + 1]); // ["1.00", "8968.7500", "8968.75"]
+    // matches can be null : Ex: Parental pay    (no quantity) (no rate) (only total was provided)
+    return constantsAtStart.concat(matches ? number_types.map((_, i) => Number(matches[i + 1])) : number_types.map((_, i) => i === number_types.length - 1 ? numbers : 0)); // ["Salary", "1.00", "8968.7500", "8968.75"]
 };
 
 const parseDataWrtTypes = (data, type, isSingleLiner) => {
     // The whole point of "types" here is to separate Numbers from each other but not to separate strings (which is impossible)
-    // data :: [SingleLineData | MultiLineData]
-    // data :: [[String]]
-    // For each element in inner array apply the type & separate them out
+    // data ::  Payslip Structure Words | Payslip SingleLine [String] | Payslip Grid [String] | [[[ String ]]]
+    // For each Words in inner array apply the type & separate them out
     // type - String | NI | Number.x | String - Number.x - Number.x | ...
     // isSingleLiner - true if data is of SingleLined Structure, then filter inner array to [Array:1_length] using the type information
     // isSingleLiner - false if data is Grid Structure, then don't cut data, just parse individual elements in inner array & seperate them
-    // If data = [["JA405129B"], ["KJ405129C"]] => [["JA405129B"], ["KJ405129C"]]
+    // If data = [[["JA405129B"]], [["KJ405129C"]]] => [[["JA405129B"], ["KJ405129C"]]]
     // If Overselected the NI numbers to include some extra text them cut that down
-    // If data = [["Paye", "JA405129B"], ["KJ405129C", "Tax"]] => [["JA405129B"], ["KJ405129C"]]
+    // If data = [[["Paye", "JA405129B"]], [["KJ405129C", "Tax"]]] => [[["JA405129B"]], [["KJ405129C"]]]
     // If data = [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]] & type = "String - Number.2 - Number.4 - Number.2"
     // => [[["Salary", "1.00", "8968.7500", "8968.75"], ["Car Allowance", "1.00", "400.0000", "400.00"], ["Commission", "1.00", "13942.6600", "13942.66"]]]
+
     if (isSingleLiner) { 
         if (type === 'String') {
-            return data.map(arr => arr.join(' '));
+            return data;
         } else if (type.match(/^Number\.\d$/) || type === 'NI') {
-            return data.map(arr => arr.filter(s => s.match(typeToRegex(type))));
+            return data.map(payslip => payslip.map(structure => structure.filter(words => words.match(typeToRegex(type)))));
         } else {
             throw new Error(`Unknown type for a single liner.`);
         }
     } else { // Grid
         // If type contains multiple numbers then fuse the numbers
-        if (type.filter(e => e.includes('Number')).length > 1) {
-            return data.map(grid => grid.map(row => separateNumbersWithDecimals(row, type)));
+        if (type.split(/\s*-\s*/).filter(e => e.includes('Number')).length > 1) {
+            return data.map(payslip => payslip.map(structure => separateNumbersWithDecimals(structure, type)));
         }
         // Return data if simple data type
         return data;
     }
 };
 
-const convertTemplateToStructures = (template, keyWords, structures) => {
+const convertColumnsToStructures = (columns, keyWords, structures) => {
     // keyWords - ["NI Number", "Deductions"]
     // structures - ["SingleLine", "Grid"]
-    // template - ["NI Number"]
+    // columns - ["NI Number"]
     // output - ["SingleLine"]
-    return template.map(t => structures[keyWords.indexOf(t)]);
+    return columns.map(t => structures[keyWords.indexOf(t)]);
 };
 
 const packColumnsWrtStructure = (data, keyWords, structures, excel_template) => {
     // data - {'NI Number': [['a'], ['b']], 'Deductions': [[['r', 'q', 't']], [['r', 'q', 't']]]}
+    // data.value :: Payslip Structure Words | Payslip SingleLine [String] | Payslip Grid [String] | [[[ String ]]]
     // keyWords - ["NI Number", "Deductions"]
     // structures - ["SingleLine", "Grid"]
     // excelTemplate - {'NI Info': ["NI Number"], 'Deductions': ["NI Number", "Deductions"]}
     // output - [[{'NI': 'a'}, {'NI', 'b'}], [{'NI': 'a', 'rate': 'r', 'quantity': 'q', 'total': 't'}, {'NI': 'b', 'rate': 'r', 'quantity': 'q', 'total': 't'}]]
     const sheets = [];
-    for (const template in excel_template) {
+    for (const sheet in excel_template) {
         // Push array of objects - Rows of Column:Value
-        const columns = excel_template[template];
-        if (convertTemplateToStructures(columns, keyWords, structures).filter(e => e.includes('Single')).length === columns.length) { // All Columns are single values
-            const data_to_zip = columns.map(t => data[t]);
-            if (data_to_zip.length === 1) {
-                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
-            } else {
-                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
+        // sheet -> ex: "NI Info", 
+        const columns = excel_template[sheet]; // ex: ["NI Number"]
+        const data_to_zip = columns.map(column => data[column]); // [ Payslip Structure Words ] | MultipleColumns Payslip Structure Words
+        
+        if (convertColumnsToStructures(columns, keyWords, structures).filter(e => e.includes('Single')).length === columns.length) { // All Columns are single values
+            const sheetData = []; // [{'c1': v11, 'c2': v12}, {'c1': v21, 'c2': v22}]
+            // Length of sheetData = No.of Payslips in a pdf
+            data_to_zip.forEach((payslipsData, index) => {
+                // console.log(payslipsData);
+                payslipsData.forEach((payslip, pIndex) => {
+                    for (const structure of payslip) {
+                        for (const word of structure) {
+                            // console.log('word', word);
+                            if (sheetData[pIndex]) {
+                                sheetData[pIndex][columns[index]] = word;
+                            } else {
+                                sheetData.push(({[columns[index]]: word}));
+                            }
+                        }
+                    }
+                });
+            });
+            sheets.push(sheetData);
+        } else { // sheet includes a grid
+            if (data_to_zip.length === 1) { // Only single grid data is required
+                const sheetData = [];
+                const column_names = [];
+                const payslipsData = data_to_zip[0];
+                payslipsData.forEach((payslip, pIndex) => {
+                    for (const structure of payslip) { // structure - ["Salary", "1.00", "3916.6700", "3916.67"]
+                        if (column_names.length === 0) {
+                            structure.map(_ => uniqueFilename('', 'Col')).forEach(c => column_names.push(c));
+                        }
+                        const temp = {};
+                        structure.forEach((word, i) => temp[column_names[i]] = word);
+                        sheetData.push(temp);
+                    }
+                });
+                console.log(sheetData);
+                sheets.push(sheetData);
+            } else { // SingleLine + Grid
+                // First fuse all single Lines & then zip with grid data
+
             }
         }
     }
@@ -18279,6 +18319,16 @@ const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_temp
     // Hoping users will have unique keywords for each annoation they selected
     // and hence we can fetch the proper types & structures using keyWords index
     // data - {"keyWord": ["...", "...", "..."], "keyWord": ["...", "..."]}
+    // data.value :: Payslip Structure Words | Payslip SingleLine [String] | Payslip Grid [String] | [[[ String ]]]
+    /*
+    for(payslip in data) {
+        for (structure in payslip) {
+            for (word in structure) {
+
+            }
+        }
+    }
+    */ 
     // keyWords - ["NI Number", "Deductions"]
     // types - ["NI", "String - Number.2"]
     // structures - ["SingleLine", "MultiLine", "Key Value", "Grid"]
@@ -18290,6 +18340,7 @@ const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_temp
         // data[keyWord] - [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]]
         parsed_data[keyWord] = parseDataWrtTypes(data[keyWord], types[index], structures[index].includes('Single'));
     }
+    console.log('parsed_data', parsed_data);
     return packColumnsWrtStructure(parsed_data, keyWords, structures, excel_template);
 };
 
@@ -18477,7 +18528,6 @@ const setupEventHandlers = docViewer => {
             const keyWords = getBoxKeyWords();
             const types = getBoxTypes(); // How to read the extracted data from PDF
             const structures = getBoxStructures(); // How to Port them to Excel, map or flatmap, ex: Every earning will have one NI, when we put NI & Earnings side by side as excel columns
-            console.log(coordinates, keyWords);
             const sheetNames = getSheetNames();
             const excel_template = getSheetNameAndColumnsInfo(); // {'Sheet1': [Col1, Col2], 'Sheet2': [Col1]}
             for (let i = 0; i < pageCount; i++) {
@@ -18485,16 +18535,17 @@ const setupEventHandlers = docViewer => {
                     // console.log(textMap);
                     coordinates.forEach( ({x1, y1, x2, y2}, j) => {
                         // Extracting data is totally based on annotations drawn
+                        const temp = extractTextFromBox(textMap, { x1, y1, x2, y2});
                         if (data[keyWords[j]]) {
-                            data[keyWords[j]].push(extractTextFromBox(textMap, { x1, y1, x2, y2}));
+                            data[keyWords[j]].push(temp);
                         } else {
-                            data[keyWords[j]] = [extractTextFromBox(textMap, { x1, y1, x2, y2})];
+                            data[keyWords[j]] = [temp];
                         }
                     });
                 }));
             }
             Promise.all(promises).then(() => {
-                console.log(data);
+                console.log('data\n', data);
                 generateExcel(fuseDataWithExcelTemplate(data, keyWords, types, structures, excel_template), sheetNamesToAlaSqlItems(sheetNames));
             });
         }

@@ -572,54 +572,6 @@ const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_temp
     return packColumnsWrtStructure(parsed_data, keyWords, structures, excel_template);
 };
 
-const convertTemplateToStructures = (template, keyWords, structures) => {
-    // keyWords - ["NI Number", "Deductions"]
-    // structures - ["SingleLine", "Grid"]
-    // template - ["NI Number"]
-    // output - ["SingleLine"]
-    return template.map(t => structures[keyWords.indexOf(t)]);
-};
-
-const packColumnsWrtStructure = (data, keyWords, structures, excel_template) => {
-    // data - {'NI Number': [['a'], ['b']], 'Deductions': [[['r', 'q', 't']], [['r', 'q', 't']]]}
-    // keyWords - ["NI Number", "Deductions"]
-    // structures - ["SingleLine", "Grid"]
-    // excelTemplate - {'NI Info': ["NI Number"], 'Deductions': ["NI Number", "Deductions"]}
-    // output - [[{'NI': 'a'}, {'NI', 'b'}], [{'NI': 'a', 'rate': 'r', 'quantity': 'q', 'total': 't'}, {'NI': 'b', 'rate': 'r', 'quantity': 'q', 'total': 't'}]]
-    const sheets = [];
-    for (const template in excel_template) {
-        // Push array of objects - Rows of Column:Value
-        const columns = excel_template[template];
-        if (convertTemplateToStructures(columns, keyWords, structures).filter(e => e.includes('Single')).length === columns.length) { // All Columns are single values
-            const data_to_zip = columns.map(t => data[t]);
-            if (data_to_zip.length === 1) {
-                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
-            } else {
-                sheets.push(data_to_zip[0].map(v => ({[columns[0]]: v})));
-            }
-        }
-    }
-    return sheets;
-};
-
-const fuseDataWithExcelTemplate = (data, keyWords, types, structures, excel_template) => {
-    // Hoping users will have unique keywords for each annoation they selected
-    // and hence we can fetch the proper types & structures using keyWords index
-    // data - {"keyWord": ["...", "...", "..."], "keyWord": ["...", "..."]}
-    // keyWords - ["NI Number", "Deductions"]
-    // types - ["NI", "String - Number.2"]
-    // structures - ["SingleLine", "MultiLine", "Key Value", "Grid"]
-    // excelTemplate - {'Sheet1': [KeyWord1, KeyWord2], 'Sheet2': [KeyWord1]}
-    // output - [[Sheet1Data], [Sheet2Data], ...]
-    const parsed_data = {};
-    for (const keyWord in data) {
-        const index = keyWords.indexOf(keyWord);
-        // data[keyWord] - [[["Salary", "1.00 8968.7500", "8968.75"], ["Car Allowance", "1.00 400.0000", "400.00"], ["Commission", "1.0013942.6600 13942.66"]]]
-        parsed_data[keyWord] = parseDataWrtTypes(data[keyWord], types[index], structures[index].includes('Single'));
-    }
-    return packColumnsWrtStructure(parsed_data, keyWords, structures, excel_template);
-};
-
 // setup event handlers for the header
 const setupEventHandlers = docViewer => {
     document.getElementById('zoom-in-button').addEventListener('click', () => {
