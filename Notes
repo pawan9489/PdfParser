@@ -24,3 +24,20 @@ ToDo:
 8. Create Excel templates
 9. Write to Excel & Download
 10. When deleted annotation it must delete the corresponding template item & vice versa
+
+Throw Error If
+    1. Same KeyWords for Annotations
+    2. Running process without any Excel templates
+    3. Running process with Unkonwn Excel Columns which are not selected in annotations
+    4. Running process with no annotations selected 
+    5. Adding anything new to structures
+    6. Can only create a type using String, Number.x & also '-' separated
+
+Mostly maintain annotations in 3 ways
+    Single Value - Ex: NI, Total Salary
+    Key value pair - Ex: Tax Code: 1033L
+    Grid : Ex: Earnings, Deductions
+
+Known Problems: 
+    Tax Codes are unable to read since picking up blob of text and the box size is not even half of blob.
+    Cannot Separate types like String - Number.x - String
