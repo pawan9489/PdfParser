@@ -489,7 +489,7 @@ const evenOutMultiLiners = (multiLinerFilteredData, maxLengthOfMultiLiners) => {
         } else {
             // Fill empty
             if (grid_data.length === 0) {
-                return [{}];
+                return new Array(maxLengthOfMultiLiners).fill([{}]);
             } else {
                 return grid_data.concat(new Array(maxLengthOfMultiLiners - grid_data.length).fill(Object.keys(grid_data[0]).reduce((acc, key) => {acc[key] = ""; return acc;}, {})));
             }
