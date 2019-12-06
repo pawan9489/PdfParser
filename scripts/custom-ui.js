@@ -2,12 +2,10 @@
 CoreControls.setWorkerPath('lib/core');
 const _ = require('lodash');
 const uniqueFilename = require('unique-filename');
+const backEnd = `http://localhost:3000/upload`;
+const sampleFile = `http://localhost:8080/pdfs/Payslips_July_19.pdf`;
+const uploads = `http://localhost:8080/uploads`;
 let globalDocViewer = '';
-let current_editing_template = [];
-let existing_pdf_templates = [];
-let excel_template = [];
-let existing_excel_templates = [];
-let cached_pages = {};
 
 // PDF - Axis
 // X = Left to Right
@@ -300,28 +298,39 @@ const extractTextFromPage = (doc, pageIndex) => {
 };
 
 const renderPDF = (backendType, fileName) => {
-    const licenseKey = '';
-    const workerTransportPromise = CoreControls.initPDFWorkerTransports(backendType, {}, licenseKey);
-    const docViewer = globalDocViewer === '' ? new CoreControls.DocumentViewer() : globalDocViewer;
-    globalDocViewer = docViewer;
-    const partRetriever = new CoreControls.PartRetrievers.ExternalPdfPartRetriever(fileName);
-    docViewer.setScrollViewElement(document.getElementById('scroll-view'));
-    docViewer.setViewerElement(document.getElementById('viewer'));
-    docViewer.loadAsync(partRetriever, {
-        type: 'pdf',
-        backendType: backendType,
-        workerTransportPromise: workerTransportPromise
-    });
-    docViewer.setOptions({
-        enableAnnotations: true
-    });
-    setupEventHandlers(docViewer);
-    docViewer.on('documentLoaded', () => {
-        // enable default tool for text and annotation selection
-        docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
-        // const doc = docViewer.getDocument();
-        // extractTextFromPage(doc, 0);
-    });
+    if (globalDocViewer === '') {
+        const licenseKey = '';
+        const workerTransportPromise = CoreControls.initPDFWorkerTransports(backendType, {}, licenseKey);
+        const docViewer = globalDocViewer === '' ? new CoreControls.DocumentViewer() : globalDocViewer;
+        globalDocViewer = docViewer;
+        const partRetriever = new CoreControls.PartRetrievers.ExternalPdfPartRetriever(fileName);
+        docViewer.setScrollViewElement(document.getElementById('scroll-view'));
+        docViewer.setViewerElement(document.getElementById('viewer'));
+        docViewer.loadAsync(partRetriever, {
+            type: 'pdf',
+            backendType: backendType,
+            workerTransportPromise: workerTransportPromise
+        });
+        docViewer.setOptions({
+            enableAnnotations: true
+        });
+        setupEventHandlers(docViewer);
+        docViewer.on('documentLoaded', () => {
+            // enable default tool for text and annotation selection
+            docViewer.setToolMode(docViewer.getTool('AnnotationEdit'));
+            // const doc = docViewer.getDocument();
+            // extractTextFromPage(doc, 0);
+        });
+    } else {
+        const licenseKey = '';
+        const workerTransportPromise = CoreControls.initPDFWorkerTransports(backendType, {}, licenseKey);
+        const partRetriever = new CoreControls.PartRetrievers.ExternalPdfPartRetriever(fileName);
+        globalDocViewer.loadAsync(partRetriever, {
+            type: 'pdf',
+            backendType: backendType,
+            workerTransportPromise: workerTransportPromise
+        });
+    }
 };
 
 const randomFileName = initial => uniqueFilename('', uniqueFilename('', uniqueFilename('', initial)));
@@ -635,11 +644,29 @@ const setupEventHandlers = docViewer => {
 
     document.getElementById('upload').addEventListener('change', function () {
         const file = this.files[0];
-        console.log(file);
         if (file) {
-            CoreControls.getDefaultPdfBackendType().then(backendType => {
-                renderPDF(backendType, `../${file.name}`);
-            });
+            const formData = new FormData();
+            formData.append("file", file);
+            fetch(backEnd, {method: "POST", body: formData}).then(res => {
+                res.json().then(data => {
+                    console.log(data);
+                    /*
+                    {   
+                        fieldname: 'file',
+                        originalname: '1.pdf',
+                        encoding: '7bit',
+                        mimetype: 'application/pdf',
+                        destination: './pdfs/uploads',
+                        filename: 'file-1575606532817.pdf',
+                        path: 'pdfs\\uploads\\file-1575606532817.pdf',
+                        size: 222613 
+                    }
+                    */
+                    CoreControls.getDefaultPdfBackendType().then(backendType => {
+                        renderPDF(backendType, `${uploads}/${data.filename}`);
+                    });
+                });
+            })
         }
     });
 
@@ -827,8 +854,9 @@ const setupEventHandlers = docViewer => {
     const annotManager = docViewer.getAnnotationManager();
     annotManager.on('annotationChanged', (e, annotations, action) => {
         // annotationChangeContainer.textContent = action + ' ' + annotations.length;
-        if (action === 'add') {
+        if (annotations.length === 1 && annotations[0].Subject === 'Rectangle' && action === 'add') {
             // console.log('this is a change that added annotations', event);
+            console.log(852, 'Add Annotation is being called', annotations, action);
             const doc = docViewer.getDocument();
             annotations.forEach(annotation => {
                 const pageIndex = annotation.getPageNumber() - 1;
@@ -860,7 +888,6 @@ CoreControls.getDefaultPdfBackendType().then(backendType => {
     // console.log(backendType); // ems
     // const docViewer = globalDocViewer === '' ? new CoreControls.DocumentViewer() : globalDocViewer;
     // setupEventHandlers(docViewer);
-    renderPDF(backendType, '../pdfs/Payslips_July_19.pdf');
+    // renderPDF(backendType, '../pdfs/Payslips_July_19.pdf');
+    renderPDF(backendType, sampleFile);
 });
-
-// /^[A-Z]{1,2}\d{1,3}\s*\d{1,3}[A-Z]{1,2}$/

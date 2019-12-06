@@ -6,6 +6,7 @@ var viewerCoords = doc.getViewerCoordinates(pageIndex, pdfCoords.x, pdfCoords.y)
 http-server -c-1 -a localhost
 npm install -g browserify -- for require to work in Browser.
 browserify scripts/custom-ui.js -o bundle.js
+node fileUploadBackend.js
 
 http://localhost:8080/custom-ui
 
