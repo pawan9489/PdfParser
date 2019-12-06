@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const port = 3000;
-const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
@@ -20,7 +19,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.post('/upload', upload.single('file'), (req, res) => {
-    console.log(req.file);
+    // console.log(req.file);
     /*
     {   
         fieldname: 'file',
@@ -33,7 +32,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         size: 222613 
     }
      */
-    console.log('storage location is ', req.hostname +'/' + req.file.path);
+    // console.log('storage location is ', req.hostname +'/' + req.file.path);
     res.send(req.file);
 });
 
